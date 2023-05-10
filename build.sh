@@ -1,15 +1,15 @@
 #! /bin/sh
 
-if [ ! -f "target/x86_64-angeles/debug/losangeles.elf" ]; then
-    echo "Building kernel"
+# Exit if any commands fail
+set -e
 
-    cd kernel
-    cargo build --target x86_64-angeles.json
-    cd ..
+echo "Building kernel"
 
-    echo "Kernel built successfully"
-fi
+cd kernel
+cargo build --target x86_64-angeles.json
+cd ..
 
+echo "Kernel built successfully"
 echo "Creating bootable image"
 
 # Create an empty zeroed out 64MiB image file.
@@ -32,7 +32,7 @@ make -C limine
 USED_LOOPBACK=$(losetup -Pf --show disk.img)
  
 # Format the ESP partition as FAT32.
-mkfs.fat -F 32 ${USED_LOOPBACK}p1 || { echo "Permission denied"; exit 1; }
+mkfs.fat -F 32 ${USED_LOOPBACK}p1
  
 # Mount the partition itself.
 mkdir -p img_mount
