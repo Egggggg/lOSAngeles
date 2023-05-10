@@ -1,2 +1,2 @@
 [build]
-target = "kernel/x86_64-angeles.json"
+target = "x86_64-angeles.json"
