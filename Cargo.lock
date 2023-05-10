@@ -30,6 +30,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "limine"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e9d0c951056ac044f0e6b09448b9d702f8fb1001db89cffd2bc467bd1c25307"
+
+[[package]]
 name = "lock_api"
 version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -44,8 +50,20 @@ name = "losangeles"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
+ "limine",
+ "pic8259",
  "spin 0.9.8",
  "uart_16550",
+ "x86_64",
+]
+
+[[package]]
+name = "pic8259"
+version = "0.10.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb844b5b01db1e0b17938685738f113bfc903846f18932b378bc0eabfa40e194"
+dependencies = [
+ "x86_64",
 ]
 
 [[package]]

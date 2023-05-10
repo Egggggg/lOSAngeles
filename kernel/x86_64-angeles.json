@@ -20,6 +20,6 @@
 	"no-default-libraries": true,
 	"position-independent-executables": false,
 	"pre-link-args": {
-	  "ld.lld": ["--gc-sections", "--script=kernel/ld/x86_64.ld"]
+	  "ld.lld": ["--script=kernel/ld/x86_64.ld"]
 	}
   }
