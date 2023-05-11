@@ -26,8 +26,7 @@ pub fn put_pixel(x: usize, y: usize, color: u32) {
             }
 
             // pitch is the number of bytes in a scanline
-            // TODO: words
-            // this is guaranteed to be within our framebuffer because
+            // this is guaranteed to be within our framebuffer because we checked dimensions
             let pixel_offset = (x + (y * fb.pitch as usize)) as isize;
 
             // we are assuming the framebuffer is using 24 bit color
