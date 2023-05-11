@@ -16,8 +16,12 @@ pub extern "C" fn _start() {
     serial_println!("Bepis");
 
     let cock = "cock";
+
     serial_println!("Nice {}", cock);
     serial_println!("Outta here");
+
+    // heehoo thats the number
+    vga::funky(69, 69);
 
     loop {}
 }
