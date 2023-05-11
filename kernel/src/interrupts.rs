@@ -35,7 +35,9 @@ pub fn init() {
 
     unsafe { 
         PICS.lock().initialize();
-        PICS.lock().write_masks(0, 0);
+        // Limine starts the kernel with all IRQs masked
+        // we only want to unmask the timer for now
+        PICS.lock().write_masks(0xFE, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
