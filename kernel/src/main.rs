@@ -21,7 +21,7 @@ pub extern "C" fn _start() {
     serial_println!("Outta here");
 
     // heehoo thats the number
-    vga::funky(69, 69);
+    vga::put_pixel(69, 69, 0x00FFFF00);
 
     loop {}
 }
