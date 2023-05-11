@@ -6,7 +6,7 @@ set -e
 echo "Building kernel"
 
 cd kernel
-cargo build --target x86_64-angeles.json -Zbuild-std=core -Zbuild-std-features=compiler-builtins-mem
+cargo build --target x86_64-angeles.json 
 cd ..
 
 echo "Kernel built successfully"

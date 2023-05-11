@@ -4,19 +4,20 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, Pag
 
 use crate::serial_print;
 
+/// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
+
+/// Offset used for PIC 2
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
+/// Both PICs
 pub static PICS: spin::Mutex<ChainedPics> = spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
 
 lazy_static! {
+    /// Interrupt descriptor table, holds ISR vectors for each interrupt
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
-
-        unsafe {
-            idt.double_fault.set_handler_fn(double_fault_handler).set_stack_index(DOUBLE_FAULT_IST_INDEX);
-        }
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
 
@@ -24,8 +25,20 @@ lazy_static! {
     };
 }
 
-pub fn init_idt() {
+fn init_idt() {
     IDT.load();
+}
+
+/// Initializes interrupts
+pub fn init() {
+    init_idt();
+
+    unsafe { 
+        PICS.lock().initialize();
+        PICS.lock().write_masks(0, 0);
+    }
+
+    x86_64::instructions::interrupts::enable();
 }
 
 #[derive(Debug, Clone, Copy)]
