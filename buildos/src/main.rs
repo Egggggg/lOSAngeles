@@ -6,6 +6,9 @@ use {
     std::{fmt::Display, fs::File, io, path::Path, process::Command},
 };
 
+// change the part before `,ac97` to what you want qemu to use
+const AUDIO_DRIVER: &'static str = "alsa";
+
 fn main() -> Result<(), Error> {
     env_logger::init();
     let mut args = std::env::args();
@@ -137,7 +140,7 @@ fn run() -> Result<(), Error> {
         "-m", "512m",
         "-cpu", "qemu64",
         "-hda", "disk.img",
-        "-soundhw", "ac97",
+        "-audio", &format!("{AUDIO_DRIVER},model=ac97"),
         "-vga", "cirrus",
     ]);
 
