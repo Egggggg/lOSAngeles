@@ -6,9 +6,12 @@ use crate::serial_println;
 static FRAMEBUFFER_REQUEST: LimineFramebufferRequest = LimineFramebufferRequest::new(0);
 
 /// Draws a single pixel to the screen
+/// 
 /// This is just for me to look at later to remember how to draw pixels
+/// 
 /// Please don't use this to render large rectangles
-/// `color` is 565 RGB
+/// 
+/// `color` is RGB565
 pub fn put_pixel(x: usize, y: usize, color: u16) {
     if let Some(framebuffer_response) = FRAMEBUFFER_REQUEST.get_response().get() {
         if framebuffer_response.framebuffer_count < 1 {

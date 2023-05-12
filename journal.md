@@ -8,4 +8,18 @@ We love big commits
 
 ## Day 2
 
-Kernel now requests a framebuffer from 
+Kernel now requests a framebuffer from Limine, and can draw to it
+
+Interrupts enabled and very minimal double fault handler added
+
+PIC configured, leaving only the timer interrupt unmasked for now
+
+Jedd is born
+
+## Day 3
+
+Added a function to get memory map from Limine and another to access page tables
+
+Unmasked the keyboard interrupt and started writing a handler for it
+
+Jedd grows

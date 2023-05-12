@@ -6,7 +6,7 @@ To keep the overhead of building and running to a minimum we will use these
 
 ### Build
 
-- `git submodule init`
+- `git submodule update --init`
 - `./build.sh`
 
 Dependencies:

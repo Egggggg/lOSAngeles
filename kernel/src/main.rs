@@ -14,10 +14,9 @@ pub extern "C" fn _start() {
     init();
     serial_println!("Bepis");
 
+    // TODO: Remove this
     let cock = "cock";
-
     serial_println!("Nice {}", cock);
-    serial_println!("Outta here");
 
     // heehoo thats the number
     // Jedd

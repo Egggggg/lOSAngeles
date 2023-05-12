@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use pc_keyboard::{Keyboard, layouts, ScancodeSet1, HandleControl};
+use pc_keyboard::{Keyboard, layouts, ScancodeSet1, HandleControl, DecodedKey};
 use pic8259::ChainedPics;
 use spin::Mutex;
 use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode}, instructions::port::Port};
@@ -92,8 +92,17 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 }
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     let mut keyboard = KEYBOARD.lock();
-    let mut port = unsafe { Port::new(0x60) };
+    let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
+
+    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+        if let Some(key) = keyboard.process_keyevent(key_event) {
+            match key {
+                DecodedKey::Unicode(character) => serial_print!("{}", character),
+                DecodedKey::RawKey(key) => serial_print!("{:?}", key),
+            }
+        }
+    }
 
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
