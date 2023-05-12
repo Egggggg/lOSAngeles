@@ -17,11 +17,11 @@ pub fn put_pixel(x: usize, y: usize, color: u16) {
             // get the first framebuffer
             let fb = &framebuffer_response.framebuffers()[0];
 
-            if x + 50 >= fb.width as usize {
+            if x + 400 >= fb.width as usize {
                 panic!("x too high");
             }
 
-            if y + 50 >= fb.height as usize {
+            if y + 400 >= fb.height as usize {
                 panic!("y too high");
             }
 
@@ -29,8 +29,8 @@ pub fn put_pixel(x: usize, y: usize, color: u16) {
             let color_bytes: [u8; 2] = color.to_le_bytes();
 
 
-            for i in x..x+50 {
-                for e in y..y+50 {
+            for i in x..x+400 {
+                for e in y..y+400 {
                     // pitch is the number of bytes in a scanline
                     let pixel_offset = ((i * 2) + (e * fb.pitch as usize)) as isize;
 

@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
+use pc_keyboard::{Keyboard, layouts, ScancodeSet1, HandleControl};
 use pic8259::ChainedPics;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+use spin::Mutex;
+use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode}, instructions::port::Port};
 
 use crate::serial_print;
 
@@ -22,8 +24,15 @@ lazy_static! {
         idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
+        idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
 
         idt
+    };
+
+    static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> = {
+        Mutex::new(Keyboard::new(
+            ScancodeSet1::new(), layouts::Us104Key, HandleControl::Ignore)
+        )
     };
 }
 
@@ -39,7 +48,7 @@ pub fn init() {
         PICS.lock().initialize();
         // Limine starts the kernel with all IRQs masked
         // we only want to unmask the timer for now
-        PICS.lock().write_masks(0xFE, 0xFF);
+        PICS.lock().write_masks(0xFC, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
@@ -49,6 +58,7 @@ pub fn init() {
 #[repr(u8)]
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
+    Keyboard,
 }
 
 impl InterruptIndex {
@@ -78,5 +88,14 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    }
+}
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    let mut keyboard = KEYBOARD.lock();
+    let mut port = unsafe { Port::new(0x60) };
+    let scancode: u8 = unsafe { port.read() };
+
+    unsafe {
+        PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
 }

@@ -22,7 +22,7 @@ pub extern "C" fn _start() {
     // heehoo thats the number
     // Jedd
     serial_println!("Deploying Jedd");
-    vga::put_pixel(69, 69, 0b00000_11111__00000_0);
+    vga::put_pixel(69, 69, 0b00000_111111_00000);
     serial_println!("Jedd is on the loose");
 
     loop {}

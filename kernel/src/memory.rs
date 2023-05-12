@@ -6,7 +6,7 @@ use crate::serial_println;
 static MEMMAP_REQUEST: LimineMemmapRequest = LimineMemmapRequest::new(0);
 
 pub fn init() {
-    let mem_table = active_level_4_table();
+    let mem_table = unsafe { active_level_4_table() } ;
 
     for (i, entry) in mem_table.iter().enumerate() {
         if !entry.is_unused() {
@@ -15,7 +15,7 @@ pub fn init() {
     }
 }
 
-fn active_level_4_table() -> &'static mut PageTable {
+unsafe fn active_level_4_table() -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
 
     let (level_4_table_frame, _) = Cr3::read();
@@ -24,7 +24,7 @@ fn active_level_4_table() -> &'static mut PageTable {
     let size = level_4_table_frame.size();
     let table: *mut PageTable = virt.as_mut_ptr();
 
-    unsafe { &mut *table }
+    &mut *table
 }
 
 fn read_memmap() {
