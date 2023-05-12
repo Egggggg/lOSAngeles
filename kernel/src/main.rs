@@ -2,13 +2,12 @@
 #![no_std]
 #![no_main]
 
-use core::{panic::PanicInfo, fmt::Write};
-
 mod serial;
 mod vga;
 mod interrupts;
+mod memory;
 
-use serial::SERIAL1;
+use core::{panic::PanicInfo};
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -21,13 +20,17 @@ pub extern "C" fn _start() {
     serial_println!("Outta here");
 
     // heehoo thats the number
-    vga::put_pixel(69, 69, 0x00FFFF00);
+    // Jedd
+    serial_println!("Deploying Jedd");
+    vga::put_pixel(69, 69, 0b00000_11111__00000_0);
+    serial_println!("Jedd is on the loose");
 
     loop {}
 }
 
 fn init() {
     interrupts::init();
+    memory::init();
 }
 
 #[panic_handler]

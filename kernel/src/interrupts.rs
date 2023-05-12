@@ -18,6 +18,8 @@ lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt.double_fault.set_handler_fn(double_fault_handler);
+        idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
 
@@ -61,6 +63,14 @@ impl InterruptIndex {
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     serial_print!("BREAKPOINT: {:?}", stack_frame);
+}
+
+extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _error_code: u64) -> ! {
+    panic!("DOUBLE FAULT: {stack_frame:?}");
+}
+
+extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
+    panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

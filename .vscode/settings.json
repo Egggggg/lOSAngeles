@@ -1,6 +1,7 @@
 {
     "rust-analyzer.linkedProjects": [
-        "Cargo.toml"
+        "Cargo.toml",
+        "./kernel/Cargo.toml"
     ],
-    "rust-analyzer.cargo.target": "./kernel/x86_64-angeles.json"
+    "rust-analyzer.checkOnSave.allTargets": false,
 }
