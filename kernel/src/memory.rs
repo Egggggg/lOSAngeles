@@ -6,10 +6,9 @@ use crate::serial_println;
 static MEMMAP_REQUEST: LimineMemmapRequest = LimineMemmapRequest::new(0);
 
 struct MemoryMapEntry {
-    virt: usize,
-    base: usize,
-    length: usize,
-    typ: LimineMemoryMapEntryType,
+    start: usize,
+    end: usize,
+    next: Option<&'static MemoryMapEntry>,
 }
 
 // impl From<LimineMemmapEntry> for MemoryMapEntry {
@@ -48,6 +47,7 @@ fn read_memmap() {
         serial_println!("Entries: {}", entry_count);
 
         let mut entry = unsafe { memmap_response.entries.as_ptr().offset(0) };
+        
 
         for i in 0..entry_count as isize {
             let current = unsafe { entry.read() };
