@@ -1,9 +1,21 @@
-use limine::{LimineMemmapRequest, LimineMemoryMapEntryType};
+use limine::{LimineMemmapRequest, LimineMemoryMapEntryType, LimineMemmapEntry, NonNullPtr};
 use x86_64::{VirtAddr, structures::paging::PageTable};
 
 use crate::serial_println;
 
 static MEMMAP_REQUEST: LimineMemmapRequest = LimineMemmapRequest::new(0);
+
+struct MemoryMapEntry {
+    virt: usize,
+    base: usize,
+    length: usize,
+    typ: LimineMemoryMapEntryType,
+}
+
+// impl From<LimineMemmapEntry> for MemoryMapEntry {
+//     fn from(value: LimineMemmapEntry) -> Self {
+//     }
+// }
 
 pub fn init() {
     let mem_table = unsafe { active_level_4_table() } ;
@@ -13,6 +25,8 @@ pub fn init() {
             serial_println!("L4 Entry {}: {:?}", i, entry);
         }
     }
+
+    read_memmap();
 }
 
 unsafe fn active_level_4_table() -> &'static mut PageTable {
@@ -36,10 +50,10 @@ fn read_memmap() {
         let mut entry = unsafe { memmap_response.entries.as_ptr().offset(0) };
 
         for i in 0..entry_count as isize {
-
-            let mem_base = unsafe { entry.read().base } as *mut u8;
-            let mem_len = unsafe { entry.read().len } ;
-            let mem_type = unsafe { entry.read().typ };
+            let current = unsafe { entry.read() };
+            let mem_base = current.base as *mut u8;
+            let mem_len = current.len;
+            let mem_type = current.typ;
             entry = unsafe { entry.offset(1) };
 
             serial_println!("Entry {}: ", i);
@@ -47,14 +61,6 @@ fn read_memmap() {
             serial_println!("   Base:   {:p}", mem_base);
             serial_println!("   Length: {}", mem_len);
             serial_println!("   Type:   {:?}", mem_type);
-
-            // little test guy to see if i can access these these areas
-            match mem_type {
-                LimineMemoryMapEntryType::Usable => {
-                    
-                }
-                _ => {}
-            }
         }
     }
 }
