@@ -1,20 +1,17 @@
 use limine::{LimineMemmapRequest, LimineMemoryMapEntryType, LimineMemmapEntry, NonNullPtr};
-use x86_64::{VirtAddr, structures::paging::PageTable};
+use x86_64::{VirtAddr, structures::paging::{PageTable, PhysFrame, FrameAllocator, Size4KiB}, PhysAddr};
 
 use crate::serial_println;
 
 static MEMMAP_REQUEST: LimineMemmapRequest = LimineMemmapRequest::new(0);
 
-struct MemoryMapEntry {
-    start: usize,
-    end: usize,
-    next: Option<&'static MemoryMapEntry>,
-}
+const FRAME_SIZE: usize = 4096;
+const PHYSICAL_AREAS: usize = 10;
 
-// impl From<LimineMemmapEntry> for MemoryMapEntry {
-//     fn from(value: LimineMemmapEntry) -> Self {
-//     }
-// }
+struct PhysicalMemory {
+    map: &'static [NonNullPtr<LimineMemmapEntry>],
+    next: usize,
+}
 
 pub fn init() {
     let mem_table = unsafe { active_level_4_table() } ;
@@ -24,8 +21,6 @@ pub fn init() {
             serial_println!("L4 Entry {}: {:?}", i, entry);
         }
     }
-
-    read_memmap();
 }
 
 unsafe fn active_level_4_table() -> &'static mut PageTable {
@@ -34,33 +29,38 @@ unsafe fn active_level_4_table() -> &'static mut PageTable {
     let (level_4_table_frame, _) = Cr3::read();
     let phys = level_4_table_frame.start_address();
     let virt: VirtAddr = VirtAddr::new(phys.as_u64());
-    let size = level_4_table_frame.size();
     let table: *mut PageTable = virt.as_mut_ptr();
 
     &mut *table
 }
 
-fn read_memmap() {
-    if let Some(memmap_response) = MEMMAP_REQUEST.get_response().get() {
-        let entry_count = memmap_response.entry_count;
-
-        serial_println!("Entries: {}", entry_count);
-
-        let mut entry = unsafe { memmap_response.entries.as_ptr().offset(0) };
-        
-
-        for i in 0..entry_count as isize {
-            let current = unsafe { entry.read() };
-            let mem_base = current.base as *mut u8;
-            let mem_len = current.len;
-            let mem_type = current.typ;
-            entry = unsafe { entry.offset(1) };
-
-            serial_println!("Entry {}: ", i);
-            serial_println!("   At:     {:p}", entry);
-            serial_println!("   Base:   {:p}", mem_base);
-            serial_println!("   Length: {}", mem_len);
-            serial_println!("   Type:   {:?}", mem_type);
+impl PhysicalMemory {
+    fn new() -> Self {
+        let map = MEMMAP_REQUEST.get_response().get().unwrap().memmap();
+        Self {
+            map,
+            next: 0,
         }
+    }
+
+    fn usable_frames(&mut self) -> impl Iterator<Item = PhysFrame> {
+        let filtered = self.map.iter().filter(|e| match e.typ {
+            LimineMemoryMapEntryType::Usable => true,
+            _ => false
+        });
+
+        let mapped = filtered.map(|e| e.base..e.base+e.len);
+        let frames = mapped.flat_map(|e| e.step_by(FRAME_SIZE));
+
+        frames.map(|addr| PhysFrame::containing_address(PhysAddr::new(addr)))
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for PhysicalMemory {
+    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
+        let frame = self.usable_frames().nth(self.next);
+        self.next += 1;
+
+        frame
     }
 }
