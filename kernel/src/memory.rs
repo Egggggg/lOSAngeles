@@ -57,10 +57,7 @@ impl PageFrameAllocator {
 
     /// Returns an iterator over all frames marked `usable` in the memory map
     fn usable_frames(&mut self) -> impl Iterator<Item = PhysFrame> {
-        let filtered = self.map.iter().filter(|e| match e.typ {
-            LimineMemoryMapEntryType::Usable => true,
-            _ => false
-        });
+        let filtered = self.map.iter().filter(|e| e.typ == LimineMemoryMapEntryType::Usable);
 
         let mapped = filtered.map(|e| e.base..e.base+e.len);
         let frames = mapped.flat_map(|e| e.step_by(FRAME_SIZE));

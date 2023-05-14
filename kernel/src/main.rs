@@ -7,31 +7,41 @@ mod vga;
 mod interrupts;
 mod memory;
 mod allocator;
+mod devices;
 
 extern crate alloc;
 
 use core::panic::PanicInfo;
+
+use alloc::vec::Vec;
+use x86_64::instructions::interrupts::without_interrupts;
 
 #[no_mangle]
 pub extern "C" fn _start() {
     init();
     serial_println!("Bepis");
 
-    // TODO: Remove this
-    let cock = "cock";
-    serial_println!("Nice {}", cock);
-
     // heehoo thats the number
     serial_println!("Deploying Jedd...");
     vga::put_pixel(69, 69, 0b11111_111111_00000);
     serial_println!("Jedd is on the loose");
 
+    let mut cool: Vec<usize> = Vec::with_capacity(32);
+
+    for i in 0..cool.capacity() {
+        cool.push(i);
+    }
+
+    serial_println!("cool[0] = {}", cool[0]);
+
     loop {}
 }
 
 fn init() {
-    interrupts::init();
-    unsafe { memory::init() };
+    without_interrupts(|| {
+        interrupts::init();
+        unsafe { memory::init() };
+    });
 }
 
 #[panic_handler]

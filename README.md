@@ -7,7 +7,7 @@ To keep the overhead of building and running to a minimum we will use these
 ### Build
 
 - `git submodule update --init`
-- `./build.sh`
+- `./build.sh` (may need root (oof))
 
 Dependencies:
 
