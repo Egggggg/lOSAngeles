@@ -6,8 +6,11 @@ mod serial;
 mod vga;
 mod interrupts;
 mod memory;
+mod allocator;
 
-use core::{panic::PanicInfo};
+extern crate alloc;
+
+use core::panic::PanicInfo;
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -19,9 +22,8 @@ pub extern "C" fn _start() {
     serial_println!("Nice {}", cock);
 
     // heehoo thats the number
-    // Jedd
-    serial_println!("Deploying Jedd");
-    vga::put_pixel(69, 69, 0b00000_111111_00000);
+    serial_println!("Deploying Jedd...");
+    vga::put_pixel(69, 69, 0b11111_111111_00000);
     serial_println!("Jedd is on the loose");
 
     loop {}
@@ -29,7 +31,7 @@ pub extern "C" fn _start() {
 
 fn init() {
     interrupts::init();
-    memory::init();
+    unsafe { memory::init() };
 }
 
 #[panic_handler]

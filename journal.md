@@ -12,7 +12,7 @@ Kernel now requests a framebuffer from Limine, and can draw to it
 
 Interrupts enabled and very minimal double fault handler added
 
-PIC configured, leaving only the timer interrupt unmasked for now
+Configured PIC, leaving only the timer interrupt unmasked for now
 
 Jedd is born
 
@@ -20,6 +20,14 @@ Jedd is born
 
 Added a function to get memory map from Limine and another to access page tables
 
-Unmasked the keyboard interrupt and started writing a handler for it
+Unmasked the keyboard interrupt and wrote a handler for it
 
 Jedd grows
+
+## Day 4
+
+Researched paging (it confused me)
+
+## Day 5
+
+Implemented paging and a bump allocator for the heap, planning to change it later after I learn more about allocators
