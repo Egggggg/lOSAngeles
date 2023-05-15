@@ -1,9 +1,36 @@
-use limine::{LimineMemmapRequest, LimineMemoryMapEntryType, LimineMemmapEntry, NonNullPtr, LimineHhdmRequest};
-use x86_64::{VirtAddr, structures::paging::{PageTable, PhysFrame, FrameAllocator, Size4KiB, OffsetPageTable}, PhysAddr};
+use lazy_static::lazy_static;
+use limine::{
+    LimineMemmapRequest, 
+    LimineMemoryMapEntryType,
+    LimineMemmapEntry,
+    NonNullPtr,
+    LimineHhdmRequest,
+    LimineKernelAddressResponse,
+    LimineKernelAddressRequest
+};
+use x86_64::{
+    VirtAddr,
+    structures::paging::{
+        PageTable,
+        PhysFrame,
+        FrameAllocator,
+        Size4KiB,
+        OffsetPageTable
+    },
+    PhysAddr
+};
 
-use crate::{serial_println, allocator};
+use crate::allocator;
 
 const FRAME_SIZE: usize = 4096;
+
+lazy_static! {
+    pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
+        static KERNEL_ADDR_REQUEST: LimineKernelAddressRequest = LimineKernelAddressRequest::new(0);
+
+        KERNEL_ADDR_REQUEST.get_response().get().unwrap()
+    };
+}
 
 /// Allocates physical frames
 struct PageFrameAllocator {
@@ -19,14 +46,9 @@ pub unsafe fn init() {
     // unsafe
     let level_4_table = active_level_4_table(physical_memory_offset);
 
-    for (i, entry) in level_4_table.iter().enumerate() {
-        if !entry.is_unused() {
-            serial_println!("L4 Entry {}: {:?}", i, entry);
-        }
-    }
-
     let mut frame_allocator = PageFrameAllocator::new();
     let mut mapper = OffsetPageTable::new(level_4_table, physical_memory_offset);
+    
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 }

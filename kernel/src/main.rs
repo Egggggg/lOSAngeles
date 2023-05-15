@@ -8,13 +8,14 @@ mod interrupts;
 mod memory;
 mod allocator;
 mod devices;
+mod syscall;
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, arch::{asm, global_asm}};
 
 use alloc::vec::Vec;
-use x86_64::instructions::interrupts::without_interrupts;
+use x86_64::{instructions::interrupts::without_interrupts, registers};
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -33,6 +34,16 @@ pub extern "C" fn _start() {
     }
 
     serial_println!("cool[0] = {}", cool[0]);
+
+    unsafe { syscall::init_syscalls() };
+    unsafe {
+        asm!(
+            "mov rax, 45",
+            "syscall",
+        );
+    }
+
+    serial_println!("not lost");
 
     loop {}
 }
