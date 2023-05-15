@@ -1,15 +1,17 @@
-use core::arch::{asm, global_asm};
+use core::arch::asm;
 
-use x86_64::{registers, VirtAddr};
+use x86_64::{registers, VirtAddr, structures::gdt::SegmentSelector, PrivilegeLevel};
 
-use crate::{serial_println, memory};
+use crate::serial_println;
 
 pub unsafe fn init_syscalls() {
     {
         use registers::model_specific::{Efer, EferFlags};
-        if Efer::read().bits() & 1 == 0 {
-            Efer::write(EferFlags::SYSTEM_CALL_EXTENSIONS);
-        }
+        
+        let mut flags = Efer::read();
+        flags.set(EferFlags::SYSTEM_CALL_EXTENSIONS, true);
+
+        unsafe { Efer::write(flags) };
     }
 
     let syscall_addr: *const u64 = _syscall_rs as *const u64;
@@ -19,6 +21,12 @@ pub unsafe fn init_syscalls() {
     // set the syscall address
     let virt_syscall_addr = VirtAddr::new(syscall_addr as u64);
     registers::model_specific::LStar::write(virt_syscall_addr);
+    registers::model_specific::Star::write(
+        SegmentSelector::new(3, PrivilegeLevel::Ring3),
+        SegmentSelector::new(2, PrivilegeLevel::Ring3),
+        SegmentSelector::new(0, PrivilegeLevel::Ring0),
+        SegmentSelector::new(1, PrivilegeLevel::Ring0)
+    ).unwrap();
 }
 
 #[no_mangle]

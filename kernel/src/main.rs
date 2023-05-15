@@ -33,9 +33,8 @@ pub extern "C" fn _start() {
         cool.push(i);
     }
 
-    serial_println!("cool[0] = {}", cool[0]);
+    serial_println!("cool[4] = {}", cool[4]);
 
-    unsafe { syscall::init_syscalls() };
     unsafe {
         asm!(
             "mov rax, 45",
@@ -53,6 +52,7 @@ fn init() {
         interrupts::init();
         unsafe { memory::init() };
     });
+    unsafe { syscall::init_syscalls() };
 }
 
 #[panic_handler]

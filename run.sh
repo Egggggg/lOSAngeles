@@ -8,5 +8,5 @@ qemu-system-x86_64 \
 -m 512m \
 -cpu qemu64 \
 -hda target/disk.img \
--audio "${AUDIO},model=ac97" \
 -vga cirrus # Cirrus Logic GD5446 Video card
+# -audio "${AUDIO},model=ac97" \

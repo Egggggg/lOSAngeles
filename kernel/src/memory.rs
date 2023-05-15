@@ -10,14 +10,14 @@ use limine::{
 };
 use x86_64::{
     VirtAddr,
-    structures::paging::{
+    structures::{paging::{
         PageTable,
         PhysFrame,
         FrameAllocator,
         Size4KiB,
         OffsetPageTable
-    },
-    PhysAddr
+    }, gdt::{self, GlobalDescriptorTable, SegmentSelector}},
+    PhysAddr, registers::{self, segmentation::Segment}, PrivilegeLevel
 };
 
 use crate::allocator;
@@ -29,6 +29,16 @@ lazy_static! {
         static KERNEL_ADDR_REQUEST: LimineKernelAddressRequest = LimineKernelAddressRequest::new(0);
 
         KERNEL_ADDR_REQUEST.get_response().get().unwrap()
+    };
+
+    static ref GDT: GlobalDescriptorTable = {
+        let mut gdt = gdt::GlobalDescriptorTable::new();
+        gdt.add_entry(gdt::Descriptor::kernel_code_segment());
+        gdt.add_entry(gdt::Descriptor::kernel_data_segment());
+        gdt.add_entry(gdt::Descriptor::user_code_segment());
+        gdt.add_entry(gdt::Descriptor::user_data_segment());
+        
+        gdt
     };
 }
 
@@ -48,9 +58,17 @@ pub unsafe fn init() {
 
     let mut frame_allocator = PageFrameAllocator::new();
     let mut mapper = OffsetPageTable::new(level_4_table, physical_memory_offset);
-    
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    init_gdt();
+}
+
+fn init_gdt() {
+    GDT.load();
+
+    unsafe {
+        registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
+    }
 }
 
 /// Returns the currently active level 4 page table
