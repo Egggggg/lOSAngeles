@@ -82,7 +82,14 @@ pub unsafe fn init() {
 fn init_gdt() {
     GDT.load();
 
-    serial_println!("       GDT loaded, setting CS...");
+    serial_println!("       GDT loaded, setting segment selectors...");
+
+    unsafe {
+        registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
+        registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
+    }
+
+    serial_println!("       Selectors set");
 }
 
 /// Returns the currently active level 4 page table

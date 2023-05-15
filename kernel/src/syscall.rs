@@ -20,10 +20,10 @@ pub unsafe fn init_syscalls() {
     let virt_syscall_addr = VirtAddr::new(syscall_addr as u64);
     registers::model_specific::LStar::write(virt_syscall_addr);
     registers::model_specific::Star::write(
+        SegmentSelector::new(4, PrivilegeLevel::Ring3),
         SegmentSelector::new(3, PrivilegeLevel::Ring3),
-        SegmentSelector::new(2, PrivilegeLevel::Ring3),
-        SegmentSelector::new(0, PrivilegeLevel::Ring0),
-        SegmentSelector::new(1, PrivilegeLevel::Ring0)
+        SegmentSelector::new(1, PrivilegeLevel::Ring0),
+        SegmentSelector::new(2, PrivilegeLevel::Ring0)
     ).unwrap();
 }
 
@@ -38,10 +38,4 @@ pub unsafe fn _syscall() {
 
     serial_println!("Welcome to syscall");
     serial_println!("Syscall number {}", number);
-
-    asm!(
-        "int 3",
-        ".byte 0x48",
-        "sysret"
-    );
 }
