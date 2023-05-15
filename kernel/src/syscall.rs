@@ -27,7 +27,6 @@ pub unsafe fn init_syscalls() {
     ).unwrap();
 }
 
-#[no_mangle]
 pub unsafe fn _syscall() {
     let mut number: u64;
 

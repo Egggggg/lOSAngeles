@@ -34,16 +34,27 @@ pub extern "C" fn _start() {
 
     serial_println!("cool[4] = {}", cool[4]);
 
+    let call: *const fn() = userspace as *const fn();
+
     unsafe {
         asm!(
-            "mov rax, 0x0000000000000045",
-            "syscall",
+            "mov rcx, {}",
+            "sysret",
+            in(reg) call,
         );
     }
 
     serial_println!("not lost");
 
     loop {}
+}
+
+/// TEMPORARY
+unsafe fn userspace() {
+    asm!(
+        "mov rax, 0x0000000000000045",
+        "syscall",
+    );
 }
 
 fn init() {
