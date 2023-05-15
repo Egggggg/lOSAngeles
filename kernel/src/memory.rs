@@ -10,17 +10,29 @@ use limine::{
 };
 use x86_64::{
     VirtAddr,
-    structures::{paging::{
-        PageTable,
-        PhysFrame,
-        FrameAllocator,
-        Size4KiB,
-        OffsetPageTable
-    }, gdt::{self, GlobalDescriptorTable, SegmentSelector}},
-    PhysAddr, registers::{self, segmentation::Segment}, PrivilegeLevel
+    structures::{
+        paging::{
+            PageTable,
+            PhysFrame,
+            FrameAllocator,
+            Size4KiB,
+            OffsetPageTable
+        }, 
+        gdt::{
+            self,
+            GlobalDescriptorTable,
+            SegmentSelector
+        }
+    },
+    PhysAddr, 
+    registers::{
+        self,
+        segmentation::Segment
+    },
+    PrivilegeLevel
 };
 
-use crate::allocator;
+use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
 
@@ -50,6 +62,7 @@ struct PageFrameAllocator {
 
 /// Starts allocation of memory
 pub unsafe fn init() {
+    serial_println!("Initializing memory...");
     static HHDM_REQUEST: LimineHhdmRequest = LimineHhdmRequest::new(0);
     let physical_memory_offset = VirtAddr::new(HHDM_REQUEST.get_response().get().unwrap().offset);
 
@@ -60,15 +73,16 @@ pub unsafe fn init() {
     let mut mapper = OffsetPageTable::new(level_4_table, physical_memory_offset);
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+
+    serial_println!("   Initializing GDT...");
     init_gdt();
+    serial_println!("Memory initialized");
 }
 
 fn init_gdt() {
     GDT.load();
 
-    unsafe {
-        registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
-    }
+    serial_println!("       GDT loaded, setting CS...");
 }
 
 /// Returns the currently active level 4 page table

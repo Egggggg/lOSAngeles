@@ -14,9 +14,7 @@ pub unsafe fn init_syscalls() {
         unsafe { Efer::write(flags) };
     }
 
-    let syscall_addr: *const u64 = _syscall_rs as *const u64;
-
-    serial_println!("syscall_addr: {:p}", syscall_addr);
+    let syscall_addr: *const u64 = _syscall as *const u64;
 
     // set the syscall address
     let virt_syscall_addr = VirtAddr::new(syscall_addr as u64);
@@ -30,15 +28,20 @@ pub unsafe fn init_syscalls() {
 }
 
 #[no_mangle]
-pub unsafe fn _syscall_rs() {
+pub unsafe fn _syscall() {
+    let mut number: u64;
+
+    asm!(
+        "mov {number}, rax",
+        number = out(reg) number,
+    );
+
     serial_println!("Welcome to syscall");
-    serial_println!("Welcome to syscall again");
-
-    let number = 12;
-
     serial_println!("Syscall number {}", number);
 
     asm!(
+        "int 3",
+        ".byte 0x48",
         "sysret"
     );
 }

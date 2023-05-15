@@ -12,10 +12,10 @@ mod syscall;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo, arch::{asm, global_asm}};
+use core::{panic::PanicInfo, arch::asm};
 
 use alloc::vec::Vec;
-use x86_64::{instructions::interrupts::without_interrupts, registers};
+use x86_64::{registers::{self, segmentation::Segment}, structures::gdt::SegmentSelector, PrivilegeLevel};
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -37,7 +37,7 @@ pub extern "C" fn _start() {
 
     unsafe {
         asm!(
-            "mov rax, 45",
+            "mov rax, 0x0000000000000045",
             "syscall",
         );
     }
@@ -49,8 +49,15 @@ pub extern "C" fn _start() {
 
 fn init() {
     unsafe { memory::init() };
-    unsafe { syscall::init_syscalls() };
     interrupts::init();
+    unsafe { syscall::init_syscalls() };
+
+    // this is causing a boot loop without an interrupt
+    unsafe {
+        registers::segmentation::CS::set_reg(SegmentSelector::new(0, PrivilegeLevel::Ring0));
+    }
+
+    serial_println!("       CS set");
 }
 
 #[panic_handler]

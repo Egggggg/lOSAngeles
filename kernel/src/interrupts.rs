@@ -1,10 +1,15 @@
 use lazy_static::lazy_static;
-use pc_keyboard::{Keyboard, layouts, ScancodeSet1, HandleControl, DecodedKey};
 use pic8259::ChainedPics;
-use spin::Mutex;
-use x86_64::{structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode}, instructions::port::Port};
+use x86_64::{
+    structures::idt::{
+        InterruptDescriptorTable,
+        InterruptStackFrame,
+        PageFaultErrorCode
+    },
+    instructions::port::Port,
+};
 
-use crate::serial_print;
+use crate::{serial_print, serial_println};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -22,6 +27,7 @@ lazy_static! {
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         idt.double_fault.set_handler_fn(double_fault_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.invalid_tss.set_handler_fn(invalid_tss_handler);
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
@@ -42,7 +48,8 @@ pub fn init() {
         PICS.lock().initialize();
         // Limine starts the kernel with all IRQs masked
         // we only want to unmask the timer for now
-        PICS.lock().write_masks(0xFC, 0xFF);
+        // PICS.lock().write_masks(0xFC, 0xFF);
+        // PICS.lock().write_masks(0xFE, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
@@ -59,10 +66,6 @@ impl InterruptIndex {
     fn as_u8(self) -> u8 {
         self as u8
     }
-
-    fn as_usize(self) -> usize {
-        usize::from(self.as_u8())
-    }
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
@@ -75,6 +78,10 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame,
 
 extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
     panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}");
+}
+
+extern "x86-interrupt" fn invalid_tss_handler(stack_frame: InterruptStackFrame, error_code: u64) {
+    panic!("INVALID TSS: {stack_frame:?}\nError code: {error_code:#016X}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

@@ -1,7 +1,4 @@
-use alloc::{collections::VecDeque};
 use pc_keyboard::{layouts::Us104Key, ScancodeSet1, DecodedKey};
-
-use crate::serial_print;
 
 const BUFFER_SIZE: usize = 32;
 
