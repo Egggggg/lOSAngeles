@@ -37,19 +37,13 @@ pub extern "C" fn _start() {
 
     let user: *const fn() = _user as *const fn();
     let star = registers::model_specific::Star::read_raw();
+    let lstar = registers::model_specific::LStar::read();
 
-    serial_println!("{:#06X}, {:#06X}", star.0, star.1);
     serial_println!("user: {:p}", user);
+    serial_println!("Star: {:#06X}, {:#06X}", star.0, star.1);
+    serial_println!("LStar: {:#016X}", lstar);
 
-    unsafe {
-        asm!(
-            "mov rcx, {}",
-            ".byte 0x48",
-            "call [rcx]",
-            // "sysret",
-            in(reg) user,
-        );
-    }
+    unsafe { _user(); }
 
     serial_println!("not lost");
 
@@ -59,8 +53,8 @@ pub extern "C" fn _start() {
 #[no_mangle]
 unsafe fn _user() {
     asm!(
-        "int 3",
-        "ret",
+        "mov rax, 0x45",
+        "syscall",
     );
 }
 

@@ -16,6 +16,8 @@ pub unsafe fn init_syscalls() {
 
     let syscall_addr: *const u64 = _syscall as *const u64;
 
+    serial_println!("syscall_addr: {:p}", syscall_addr);
+
     // set the syscall address
     let virt_syscall_addr = VirtAddr::from_ptr(syscall_addr);
     registers::model_specific::LStar::write(virt_syscall_addr);
@@ -30,7 +32,6 @@ pub unsafe fn init_syscalls() {
 }
 
 pub unsafe fn _syscall() {
-    serial_println!("Welcome to syscall");
     let mut number: u64;
 
     asm!(
@@ -38,5 +39,12 @@ pub unsafe fn _syscall() {
         out(reg) number,
     );
 
+    serial_println!("Welcome to syscall");
     serial_println!("Syscall number {}", number);
+
+    // TODO: Log CPU state
+
+    asm!(
+        "sysret"
+    );
 }
