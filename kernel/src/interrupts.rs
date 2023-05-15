@@ -28,6 +28,9 @@ lazy_static! {
         idt.double_fault.set_handler_fn(double_fault_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt.invalid_tss.set_handler_fn(invalid_tss_handler);
+        idt.segment_not_present.set_handler_fn(segment_not_present_handler);
+        idt.stack_segment_fault.set_handler_fn(stack_segment_handler);
+        idt.general_protection_fault.set_handler_fn(general_protection_handler);
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
@@ -82,6 +85,18 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
 extern "x86-interrupt" fn invalid_tss_handler(stack_frame: InterruptStackFrame, error_code: u64) {
     panic!("INVALID TSS: {stack_frame:?}\nError code: {error_code:#016X}");
+}
+
+extern "x86-interrupt" fn segment_not_present_handler(stack_frame: InterruptStackFrame, error_code: u64) {
+    panic!("SEGMENT NOT PRESENT: {stack_frame:?}\nError code: {error_code:#016X}");
+}
+
+extern "x86-interrupt" fn stack_segment_handler(stack_frame: InterruptStackFrame, error_code: u64) {
+    panic!("STACK SEGMENT FAULT: {stack_frame:?}\nError code: {error_code:#016X}");
+}
+
+extern "x86-interrupt" fn general_protection_handler(stack_frame: InterruptStackFrame, error_code: u64) {
+    panic!("GENERAL PROTECTION FAULT: {stack_frame:?}\nError code: {error_code:#016X}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

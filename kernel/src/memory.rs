@@ -22,7 +22,7 @@ use x86_64::{
             self,
             GlobalDescriptorTable,
             SegmentSelector
-        }
+        }, tss::TaskStateSegment
     },
     PhysAddr, 
     registers::{
@@ -35,6 +35,7 @@ use x86_64::{
 use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
+const DOUBLE_FAULT_IST_INDEX: usize = 0;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
@@ -43,12 +44,28 @@ lazy_static! {
         KERNEL_ADDR_REQUEST.get_response().get().unwrap()
     };
 
+    static ref TSS: TaskStateSegment = {
+        let mut tss = TaskStateSegment::new();
+
+        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = {
+            const STACK_SIZE: usize = 4096 * 5;
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+            let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
+            let stack_end = stack_start + STACK_SIZE;
+            stack_end
+        };
+
+        tss
+    };
+
     static ref GDT: GlobalDescriptorTable = {
         let mut gdt = gdt::GlobalDescriptorTable::new();
         gdt.add_entry(gdt::Descriptor::kernel_code_segment());
         gdt.add_entry(gdt::Descriptor::kernel_data_segment());
-        gdt.add_entry(gdt::Descriptor::user_code_segment());
         gdt.add_entry(gdt::Descriptor::user_data_segment());
+        gdt.add_entry(gdt::Descriptor::user_code_segment());
+        gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
         
         gdt
     };

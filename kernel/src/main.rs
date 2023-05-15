@@ -15,6 +15,7 @@ extern crate alloc;
 use core::{panic::PanicInfo, arch::asm};
 
 use alloc::vec::Vec;
+use x86_64::registers;
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -30,17 +31,23 @@ pub extern "C" fn _start() {
 
     for i in 0..cool.capacity() {
         cool.push(i);
-    }
+    };
 
     serial_println!("cool[4] = {}", cool[4]);
 
-    let call: *const fn() = userspace as *const fn();
+    let user: *const fn() = _user as *const fn();
+    let star = registers::model_specific::Star::read_raw();
+
+    serial_println!("{:#06X}, {:#06X}", star.0, star.1);
+    serial_println!("user: {:p}", user);
 
     unsafe {
         asm!(
             "mov rcx, {}",
-            "sysret",
-            in(reg) call,
+            ".byte 0x48",
+            "call [rcx]",
+            // "sysret",
+            in(reg) user,
         );
     }
 
@@ -49,11 +56,11 @@ pub extern "C" fn _start() {
     loop {}
 }
 
-/// TEMPORARY
-unsafe fn userspace() {
+#[no_mangle]
+unsafe fn _user() {
     asm!(
-        "mov rax, 0x0000000000000045",
-        "syscall",
+        "int 3",
+        "ret",
     );
 }
 
