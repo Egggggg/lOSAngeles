@@ -48,11 +48,9 @@ pub extern "C" fn _start() {
 }
 
 fn init() {
-    without_interrupts(|| {
-        interrupts::init();
-        unsafe { memory::init() };
-    });
+    unsafe { memory::init() };
     unsafe { syscall::init_syscalls() };
+    interrupts::init();
 }
 
 #[panic_handler]
