@@ -19,8 +19,6 @@ pub unsafe fn test(frame_allocator: &mut memory::PageFrameAllocator) {
     let src: *const u64 = userland as *const u64;
     let dst: *mut u64 = USERSPACE_START as *mut u64;
 
-    serial_println!("dst: {:p}", dst);
-
     copy_nonoverlapping(src, dst, 20);
 
     // enter userspace !!

@@ -95,11 +95,7 @@ pub unsafe fn init() -> PageFrameAllocator {
     let mut mapper = get_mapper();
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-
-    serial_println!("   Initializing GDT...");
     init_gdt();
-
-    serial_println!("GDT: {:?}", GDT);
 
     serial_println!("Memory initialized");
 
@@ -109,14 +105,10 @@ pub unsafe fn init() -> PageFrameAllocator {
 fn init_gdt() {
     GDT.load();
 
-    serial_println!("       GDT loaded, setting segment selectors...");
-
     unsafe {
         registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
         registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
     }
-
-    serial_println!("       Selectors set");
 }
 
 /// Returns the currently active level 4 page table
