@@ -1,3 +1,5 @@
+use core::fmt::Debug;
+
 use lazy_static::lazy_static;
 use limine::{
     LimineMemmapRequest, 
@@ -6,7 +8,7 @@ use limine::{
     NonNullPtr,
     LimineHhdmRequest,
     LimineKernelAddressResponse,
-    LimineKernelAddressRequest
+    LimineKernelAddressRequest, LimineHhdmResponse
 };
 use x86_64::{
     VirtAddr,
@@ -36,12 +38,18 @@ use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
 const DOUBLE_FAULT_IST_INDEX: usize = 0;
+const KERNEL_PML4: usize = 0;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
         static KERNEL_ADDR_REQUEST: LimineKernelAddressRequest = LimineKernelAddressRequest::new(0);
 
         KERNEL_ADDR_REQUEST.get_response().get().unwrap()
+    };
+
+    pub static ref PHYSICAL_OFFSET: &'static LimineHhdmResponse = {
+        static HHDM_REQUEST: LimineHhdmRequest = LimineHhdmRequest::new(0);
+        HHDM_REQUEST.get_response().get().unwrap()
     };
 
     static ref TSS: TaskStateSegment = {
@@ -59,6 +67,7 @@ lazy_static! {
         tss
     };
 
+    #[derive(Debug)]
     static ref GDT: GlobalDescriptorTable = {
         let mut gdt = gdt::GlobalDescriptorTable::new();
         gdt.add_entry(gdt::Descriptor::kernel_code_segment());
@@ -72,28 +81,30 @@ lazy_static! {
 }
 
 /// Allocates physical frames
-struct PageFrameAllocator {
+pub struct PageFrameAllocator {
     map: &'static [NonNullPtr<LimineMemmapEntry>],
     next: usize,
 }
 
 /// Starts allocation of memory
-pub unsafe fn init() {
+pub unsafe fn init() -> PageFrameAllocator {
     serial_println!("Initializing memory...");
-    static HHDM_REQUEST: LimineHhdmRequest = LimineHhdmRequest::new(0);
-    let physical_memory_offset = VirtAddr::new(HHDM_REQUEST.get_response().get().unwrap().offset);
-
-    // unsafe
-    let level_4_table = active_level_4_table(physical_memory_offset);
 
     let mut frame_allocator = PageFrameAllocator::new();
-    let mut mapper = OffsetPageTable::new(level_4_table, physical_memory_offset);
+
+    // unsafe
+    let mut mapper = get_mapper();
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
     serial_println!("   Initializing GDT...");
     init_gdt();
+
+    serial_println!("GDT: {:?}", GDT);
+
     serial_println!("Memory initialized");
+
+    frame_allocator
 }
 
 fn init_gdt() {
@@ -119,6 +130,18 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     let table: *mut PageTable = virt.as_mut_ptr();
 
     &mut *table
+}
+
+fn physical_offset() -> u64 {
+    PHYSICAL_OFFSET.offset
+}
+
+pub unsafe fn get_mapper<'a>() -> OffsetPageTable<'a> {
+    let physical_memory_offset = VirtAddr::new(physical_offset());
+
+    // unsafe
+    let level_4_table = unsafe { active_level_4_table(physical_memory_offset) };
+    OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
 impl PageFrameAllocator {

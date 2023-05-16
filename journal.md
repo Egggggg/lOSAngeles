@@ -31,3 +31,11 @@ Researched paging (it confused me)
 ## Day 5
 
 Implemented paging and a bump allocator for the heap, planning to change it later after I learn more about allocators
+
+## Day 6
+
+Floundered around in the direction of userspace
+
+## Day 7
+
+Created fire (the ability to enter userspace)
