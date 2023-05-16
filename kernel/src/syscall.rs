@@ -21,14 +21,14 @@ pub unsafe fn init_syscalls() {
     // set the syscall address
     let virt_syscall_addr = VirtAddr::from_ptr(syscall_addr);
     registers::model_specific::LStar::write(virt_syscall_addr);
-    registers::model_specific::Star::write(
-        SegmentSelector::new(4, PrivilegeLevel::Ring3),
-        SegmentSelector::new(3, PrivilegeLevel::Ring3),
-        SegmentSelector::new(1, PrivilegeLevel::Ring0),
-        SegmentSelector::new(2, PrivilegeLevel::Ring0)
-    ).unwrap();
+    // registers::model_specific::Star::write(
+    //     SegmentSelector::new(4, PrivilegeLevel::Ring3),
+    //     SegmentSelector::new(3, PrivilegeLevel::Ring3),
+    //     SegmentSelector::new(1, PrivilegeLevel::Ring0),
+    //     SegmentSelector::new(2, PrivilegeLevel::Ring0)
+    // ).unwrap();
 
-    registers::model_specific::Star::write_raw(2, 1)
+    registers::model_specific::Star::write_raw(3, 0);
 }
 
 pub unsafe fn _syscall() {

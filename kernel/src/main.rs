@@ -1,4 +1,4 @@
-#![feature(abi_x86_interrupt)]
+#![feature(abi_x86_interrupt, naked_functions)]
 #![no_std]
 #![no_main]
 
@@ -12,10 +12,9 @@ mod syscall;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo, arch::asm};
+use core::panic::PanicInfo;
 
 use alloc::vec::Vec;
-use x86_64::registers;
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -34,28 +33,7 @@ pub extern "C" fn _start() {
     };
 
     serial_println!("cool[4] = {}", cool[4]);
-
-    let user: *const fn() = _user as *const fn();
-    let star = registers::model_specific::Star::read_raw();
-    let lstar = registers::model_specific::LStar::read();
-
-    serial_println!("user: {:p}", user);
-    serial_println!("Star: {:#06X}, {:#06X}", star.0, star.1);
-    serial_println!("LStar: {:#016X}", lstar);
-
-    unsafe { _user(); }
-
-    serial_println!("not lost");
-
     loop {}
-}
-
-#[no_mangle]
-unsafe fn _user() {
-    asm!(
-        "mov rax, 0x45",
-        "syscall",
-    );
 }
 
 fn init() {

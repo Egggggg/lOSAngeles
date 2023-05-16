@@ -63,8 +63,8 @@ lazy_static! {
         let mut gdt = gdt::GlobalDescriptorTable::new();
         gdt.add_entry(gdt::Descriptor::kernel_code_segment());
         gdt.add_entry(gdt::Descriptor::kernel_data_segment());
-        gdt.add_entry(gdt::Descriptor::user_data_segment());
         gdt.add_entry(gdt::Descriptor::user_code_segment());
+        gdt.add_entry(gdt::Descriptor::user_data_segment());
         gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
         
         gdt
