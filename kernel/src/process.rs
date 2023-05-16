@@ -1,12 +1,13 @@
-use core::{arch::{global_asm, asm}, ptr::copy_nonoverlapping, mem::size_of};
+use core::{arch:: asm, ptr::copy_nonoverlapping};
 
-use x86_64::{registers::{self, control::Cr3Flags}, structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags}, VirtAddr};
+use x86_64::{structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags}, VirtAddr};
 
 use crate::{memory, serial_println};
 
 
 const USERSPACE_START: u64 = 0x_6000_0000_0000;
 
+// TODO: Keep PIC interrupts working after sysret (TSS I think)
 pub unsafe fn test(frame_allocator: &mut memory::PageFrameAllocator) {
     let mut mapper = memory::get_mapper();
     let page = Page::from_start_address(VirtAddr::new(USERSPACE_START)).unwrap();
@@ -29,10 +30,6 @@ pub unsafe fn test(frame_allocator: &mut memory::PageFrameAllocator) {
         "sysret",
         in(reg) USERSPACE_START,
     );
-}
-
-extern "C" fn test_call() {
-    serial_println!("called");
 }
 
 #[naked]

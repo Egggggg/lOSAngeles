@@ -51,8 +51,4 @@ pub unsafe fn _syscall() {
     // TODO: Log CPU state
 
     loop {}
-
-    // asm!(
-    //     "sysret"
-    // );
 }

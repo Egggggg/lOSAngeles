@@ -38,7 +38,6 @@ use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
 const DOUBLE_FAULT_IST_INDEX: usize = 0;
-const KERNEL_PML4: usize = 0;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {

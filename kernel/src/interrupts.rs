@@ -9,7 +9,7 @@ use x86_64::{
     instructions::port::Port,
 };
 
-use crate::{serial_print, serial_println};
+use crate::serial_print;
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -50,9 +50,8 @@ pub fn init() {
     unsafe { 
         PICS.lock().initialize();
         // Limine starts the kernel with all IRQs masked
-        // we only want to unmask the timer for now
-        // PICS.lock().write_masks(0xFC, 0xFF);
-        // PICS.lock().write_masks(0xFE, 0xFF);
+        // we only want to unmask the timer and keyboard for now
+        PICS.lock().write_masks(0xFC, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
