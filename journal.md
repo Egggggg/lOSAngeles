@@ -39,3 +39,7 @@ Floundered around in the direction of userspace
 ## Day 7
 
 Created fire (the ability to enter userspace)
+
+## Day 8
+
+Read about OSes
