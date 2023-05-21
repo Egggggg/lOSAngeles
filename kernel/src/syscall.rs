@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use x86_64::{registers, VirtAddr};
+use x86_64::{registers, VirtAddr, instructions::{port::Port, hlt}};
 
 use crate::{serial_println, interrupts};
 
@@ -14,7 +14,7 @@ pub unsafe fn init_syscalls() {
         unsafe { Efer::write(flags) };
     }
 
-    let syscall_addr: *const u64 = _syscall as *const u64;
+    let syscall_addr: *const fn() = _syscall as *const fn();
 
     serial_println!("syscall_addr: {:p}", syscall_addr);
 
@@ -34,19 +34,25 @@ pub unsafe fn init_syscalls() {
     // sysret: (after right shift by 3)
     //  cs = sysret_cs + 16     (in 64 bit mode)
     //  ss = sysret_cs + 16 + 8 (always cs + 8)
-    registers::model_specific::Star::write_raw(3, 0);
+    registers::model_specific::Star::write_raw(11, 8);
 }
 
 pub unsafe fn _syscall() {
     let number: u64;
-
+    
     asm!(
-        "mov {}, rax",
+        "mov {0}, rax",
         out(reg) number,
     );
 
     serial_println!("Welcome to syscall");
     serial_println!("Syscall number {}", number);
+
+    asm!(
+        "int3",
+    );
+
+    serial_println!("After breakpoint");
 
     let pic_masks = interrupts::PICS.lock().read_masks();
 

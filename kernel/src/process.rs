@@ -4,7 +4,6 @@ use x86_64::{structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags},
 
 use crate::{memory, serial_println};
 
-
 const USERSPACE_START: u64 = 0x_6000_0000_0000;
 
 // TODO: Keep PIC interrupts working after sysret (TSS I think)
@@ -35,9 +34,6 @@ unsafe extern "C" fn userland() {
     asm!(
         "mov rax, $0x4277dc9",
         "syscall",
-        "2:",
-        "hlt",
-        "jmp 2b",
         options(noreturn),
     );
 }

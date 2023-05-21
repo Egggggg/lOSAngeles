@@ -43,3 +43,17 @@ Created fire (the ability to enter userspace)
 ## Day 8
 
 Read about OSes
+
+## Days 9 and 10
+
+Took a break
+
+## Day 11
+
+Added the ability to parse PSF2 fonts and draw them on screen
+
+## Day 12
+
+TTY that can only output so far, kinda fucked up it pushes Jedd off the screen
+
+`print!` and `println!` macros that print to screen !!

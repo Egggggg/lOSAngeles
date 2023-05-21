@@ -10,12 +10,18 @@ mod allocator;
 mod devices;
 mod syscall;
 mod process;
+mod tty;
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
+
+use crate::tty::TTY1;
+
+const JEDD_COLOR: u16 = 0b11111_111111_00000;
+const TTY_COLOR: u16 = 0xFFFF;
 
 #[no_mangle]
 pub extern "C" fn _start() {
@@ -24,16 +30,10 @@ pub extern "C" fn _start() {
 
     // heehoo thats the number
     serial_println!("Deploying Jedd...");
-    vga::put_pixel(69, 69, 0b11111_111111_00000);
+    vga::draw_bitmap(69, 69, 1, &[0x80], JEDD_COLOR);
     serial_println!("Jedd is on the loose");
 
-    // for (i, c) in "Jedd".chars().enumerate() {
-    //     vga::put_char(75 + i * 8 * 4, 75, 4, c);
-    // }
-
-    // vga::put_char(75, 75, 4, 'H');
-
-    vga::put_str(75, 75, 6, "Jedd");
+    vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);
 
     let mut cool: Vec<usize> = Vec::with_capacity(32);
 
@@ -43,9 +43,12 @@ pub extern "C" fn _start() {
 
     serial_println!("cool[4] = {}", cool[4]);
 
-    unsafe { process::test(&mut frame_allocator); }
+    // unsafe { process::test(&mut frame_allocator); }
 
     serial_println!("not lost");
+    println!("JESSE!!!\nWE NEED TO COOK!!!!!!");
+    println!("Riddle me this Batman...\nWhy do they call it oven when you of in the cold food of out hot eat the food???");
+    println!("Goddamit robin");
 
     loop {}
 }
