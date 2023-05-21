@@ -4,4 +4,5 @@
         "./kernel/Cargo.toml"
     ],
     "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.showUnlinkedFileNotification": false,
 }

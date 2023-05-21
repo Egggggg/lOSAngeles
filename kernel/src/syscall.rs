@@ -1,8 +1,8 @@
 use core::arch::asm;
 
-use x86_64::{registers, VirtAddr, structures::gdt::SegmentSelector, PrivilegeLevel};
+use x86_64::{registers, VirtAddr};
 
-use crate::serial_println;
+use crate::{serial_println, interrupts};
 
 pub unsafe fn init_syscalls() {
     {
@@ -38,7 +38,7 @@ pub unsafe fn init_syscalls() {
 }
 
 pub unsafe fn _syscall() {
-    let mut number: u64;
+    let number: u64;
 
     asm!(
         "mov {}, rax",
@@ -48,7 +48,11 @@ pub unsafe fn _syscall() {
     serial_println!("Welcome to syscall");
     serial_println!("Syscall number {}", number);
 
-    // TODO: Log CPU state
+    let pic_masks = interrupts::PICS.lock().read_masks();
 
+    serial_println!("PIC masks: [{:#04X}, {:#04X}]", pic_masks[0], pic_masks[1]);
+
+    // TODO: Log CPU state
+    
     loop {}
 }

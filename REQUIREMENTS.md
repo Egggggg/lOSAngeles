@@ -9,7 +9,7 @@ REQUIREMENTS
 
 
     Some format of documentation for the system
-        Bonus points for making the documentation avalible from the system
+        Bonus points for making the documentation available from the system
         Bonus points for style
     read and write programs to a disk or have some form of save data
 

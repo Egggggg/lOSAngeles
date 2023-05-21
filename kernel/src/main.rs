@@ -27,6 +27,14 @@ pub extern "C" fn _start() {
     vga::put_pixel(69, 69, 0b11111_111111_00000);
     serial_println!("Jedd is on the loose");
 
+    // for (i, c) in "Jedd".chars().enumerate() {
+    //     vga::put_char(75 + i * 8 * 4, 75, 4, c);
+    // }
+
+    // vga::put_char(75, 75, 4, 'H');
+
+    vga::put_str(75, 75, 6, "Jedd");
+
     let mut cool: Vec<usize> = Vec::with_capacity(32);
 
     for i in 0..cool.capacity() {

@@ -35,7 +35,9 @@ unsafe extern "C" fn userland() {
     asm!(
         "mov rax, $0x4277dc9",
         "syscall",
-        "nop",
+        "2:",
+        "hlt",
+        "jmp 2b",
         options(noreturn),
     );
 }
