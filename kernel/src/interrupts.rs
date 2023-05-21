@@ -9,7 +9,7 @@ use x86_64::{
     instructions::port::Port,
 };
 
-use crate::serial_print;
+use crate::{serial_print, serial_println};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -71,7 +71,7 @@ impl InterruptIndex {
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    serial_print!("BREAKPOINT: {:?}", stack_frame);
+    serial_println!("BREAKPOINT: {:?}", stack_frame);
 }
 
 extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _error_code: u64) -> ! {
@@ -83,19 +83,19 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 }
 
 extern "x86-interrupt" fn invalid_tss_handler(stack_frame: InterruptStackFrame, error_code: u64) {
-    panic!("INVALID TSS: {stack_frame:?}\nError code: {error_code:#016X}");
+    panic!("INVALID TSS: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
 extern "x86-interrupt" fn segment_not_present_handler(stack_frame: InterruptStackFrame, error_code: u64) {
-    panic!("SEGMENT NOT PRESENT: {stack_frame:?}\nError code: {error_code:#016X}");
+    panic!("SEGMENT NOT PRESENT: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
 extern "x86-interrupt" fn stack_segment_handler(stack_frame: InterruptStackFrame, error_code: u64) {
-    panic!("STACK SEGMENT FAULT: {stack_frame:?}\nError code: {error_code:#016X}");
+    panic!("STACK SEGMENT FAULT: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
 extern "x86-interrupt" fn general_protection_handler(stack_frame: InterruptStackFrame, error_code: u64) {
-    panic!("GENERAL PROTECTION FAULT: {stack_frame:?}\nError code: {error_code:#016X}");
+    panic!("GENERAL PROTECTION FAULT: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
