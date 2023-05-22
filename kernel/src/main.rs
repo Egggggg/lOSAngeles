@@ -18,20 +18,17 @@ use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
 
-use crate::tty::TTY1;
-
 const JEDD_COLOR: u16 = 0b11111_111111_00000;
-const TTY_COLOR: u16 = 0xFFFF;
 
 #[no_mangle]
 pub extern "C" fn _start() {
     let mut frame_allocator = init();
-    serial_println!("Bepis");
+    println!("Bepis");
 
     // heehoo thats the number
-    serial_println!("Deploying Jedd...");
+    println!("Deploying Jedd...");
     vga::draw_bitmap(69, 69, 1, &[0x80], JEDD_COLOR);
-    serial_println!("Jedd is on the loose");
+    println!("Jedd is on the loose");
 
     vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);
 

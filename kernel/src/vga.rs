@@ -19,8 +19,6 @@ lazy_static! {
     
         let fb = &framebuffer_response.framebuffers()[0];
     
-        serial_println!("{:?}", fb);
-    
         Framebuffer {
             address: fb.address.as_ptr().unwrap() as usize,
             width: fb.width as usize,
@@ -56,6 +54,7 @@ pub fn draw_bitmap(x: usize, y: usize, size: usize, bitmap: &[u8], color: u16) {
     }
 
     if y + bitmap.len() * size >= FB.width as usize {
+        serial_println!("y: {}\nbitmap.len: {}\nsize: {}\nfb.width: {}", y, bitmap.len(), size, FB.width);
         panic!("Too far down");
     }
     
