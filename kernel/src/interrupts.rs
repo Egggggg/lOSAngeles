@@ -31,6 +31,7 @@ lazy_static! {
         idt.segment_not_present.set_handler_fn(segment_not_present_handler);
         idt.stack_segment_fault.set_handler_fn(stack_segment_handler);
         idt.general_protection_fault.set_handler_fn(general_protection_handler);
+        idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
 
         idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
@@ -51,7 +52,7 @@ pub fn init() {
         PICS.lock().initialize();
         // Limine starts the kernel with all IRQs masked
         // we only want to unmask the timer and keyboard for now
-        PICS.lock().write_masks(0xFC, 0xFF);
+        // PICS.lock().write_masks(0xFC, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
@@ -70,12 +71,13 @@ impl InterruptIndex {
     }
 }
 
+#[no_mangle]
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
     serial_println!("BREAKPOINT: {:?}", stack_frame);
 }
 
-extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _error_code: u64) -> ! {
-    panic!("DOUBLE FAULT: {stack_frame:?}");
+extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, error_code: u64) -> ! {
+    panic!("DOUBLE FAULT: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
 extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
@@ -99,6 +101,10 @@ extern "x86-interrupt" fn stack_segment_handler(stack_frame: InterruptStackFrame
 
 extern "x86-interrupt" fn general_protection_handler(stack_frame: InterruptStackFrame, error_code: u64) {
     panic!("GENERAL PROTECTION FAULT: {stack_frame:?}\nError code: {error_code:#018X}");
+}
+
+extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFrame) {
+    panic!("INVALID OPCODE: {stack_frame:?}");
 }
 
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {

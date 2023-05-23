@@ -3,6 +3,14 @@
 # Exit if any commands fail
 set -e
 
+echo "Building programs"
+
+cd programs
+cargo build --target x86_64-angeles.json --bin first --release
+cd ..
+
+cp target/x86_64-angeles/release/first.elf kernel/programs/first.elf
+
 echo "Building kernel"
 
 cd kernel

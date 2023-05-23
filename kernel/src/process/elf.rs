@@ -58,7 +58,7 @@ impl Endianness {
     }
 }
 
-pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator) -> Result<*const u8, ElfParsingError> {
+pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator) -> Result<*const (), ElfParsingError> {
     let magic = &program[..4];
     
     if magic != &ELF_MAGIC {
@@ -85,12 +85,10 @@ pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator)
         return Err(ElfParsingError::UnsupportedArch(arch));
     }
 
-    let entry = endianness.into_u64(program[24..32].try_into().unwrap()) as *const u8;
+    let entry = endianness.into_u64(program[24..32].try_into().unwrap()) as *const ();
     let program_header_start = endianness.into_u64(program[32..40].try_into().unwrap()) as usize;
     let program_header_size = endianness.into_u16(program[54..56].try_into().unwrap()) as usize;
     let program_header_amount = endianness.into_u16(program[56..58].try_into().unwrap()) as usize;
-
-    serial_println!("entry: {:p}\nstart: {},\nsize: {}\namount: {}", entry, program_header_start, program_header_size, program_header_amount);
 
     for i in 0..program_header_amount {
         let header_index = program_header_start + program_header_size * i;
@@ -99,19 +97,25 @@ pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator)
         let typ = endianness.into_u32(header[..4].try_into().unwrap());
 
         if typ == PHEADER_TYPE { 
-            let p_offset = endianness.into_u64(header[8..16].try_into().unwrap());
+            let p_offset = endianness.into_u64(header[8..16].try_into().unwrap()) as usize;
             let p_vaddr = endianness.into_u64(header[16..24].try_into().unwrap());
-            let p_filesz = endianness.into_u64(header[32..40].try_into().unwrap());
+            let p_filesz = endianness.into_u64(header[32..40].try_into().unwrap()) as usize;
             let p_memsz = endianness.into_u64(header[40..48].try_into().unwrap());
 
+            let start = VirtAddr::new(p_vaddr);
+            let end = VirtAddr::new(p_vaddr + p_memsz);
+
             memory::allocate_area(
-                VirtAddr::new(p_vaddr),
-                VirtAddr::new(p_vaddr + p_memsz),
+                start,
+                end,
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE,
                 frame_allocator
             ).unwrap();
 
-            serial_println!("{:?}", header);
+            let src = program[p_offset..p_offset + p_filesz].as_ptr();
+            let dst = p_vaddr as *mut u8;
+
+            copy_nonoverlapping(src, dst, p_filesz);
         }
     }
 

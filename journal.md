@@ -57,3 +57,7 @@ Added the ability to parse PSF2 fonts and draw them on screen
 TTY that can only output so far, kinda fucked up it pushes Jedd off the screen
 
 `print!` and `println!` macros that print to screen !!
+
+## Day 13
+
+Can now load ELF files and jump into them, still working on stack stuff

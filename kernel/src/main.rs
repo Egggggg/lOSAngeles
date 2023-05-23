@@ -48,9 +48,9 @@ pub extern "C" fn _start() {
 }
 
 fn init() -> memory::PageFrameAllocator {
-    let frame_allocator = unsafe { memory::init() };
+    let mut frame_allocator = unsafe { memory::init() };
     interrupts::init();
-    unsafe { syscall::init_syscalls() };
+    unsafe { syscall::init_syscalls(&mut frame_allocator) };
 
     frame_allocator
 }

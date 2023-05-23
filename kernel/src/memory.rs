@@ -97,8 +97,6 @@ pub unsafe fn init() -> PageFrameAllocator {
 
             pml4[i] = PageTableEntry::new();
             pml4[i].set_frame(frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-        } else {
-            serial_println!("skipping frame {}", i);
         }
     }
 
@@ -182,12 +180,32 @@ pub unsafe fn allocate_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlag
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
 
-        unsafe {
-            mapper.map_to(page, frame, flags, frame_allocator)?.flush();
+        let mapped = unsafe { mapper.map_to(page, frame, flags, frame_allocator) };
+
+        match mapped {
+            Err(e) => {
+                match e {
+                    MapToError::PageAlreadyMapped(_) => {},
+                    _ => return Err(e),
+                }
+            }
+            Ok(map) => map.flush(),
         }
     }
 
     Ok(())
+}
+
+pub unsafe fn set_area_flags(start: VirtAddr, end: VirtAddr, flags: PageTableFlags) {
+    let start_page: Page<Size4KiB> = Page::containing_address(start);
+    let end_page = Page::containing_address(end);
+
+    let page_range = Page::range_inclusive(start_page, end_page);
+    let mut mapper = get_mapper();
+
+    for page in page_range {
+        mapper.update_flags(page, flags).unwrap().flush();
+    }
 }
 
 /// Allocates physical frames
