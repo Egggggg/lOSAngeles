@@ -18,7 +18,7 @@ use x86_64::{
             PhysFrame,
             FrameAllocator,
             Size4KiB,
-            OffsetPageTable
+            OffsetPageTable, PageTableFlags, page_table::PageTableEntry, Page, mapper::MapToError, Mapper
         }, 
         gdt::{
             self,
@@ -79,12 +79,6 @@ lazy_static! {
     };
 }
 
-/// Allocates physical frames
-pub struct PageFrameAllocator {
-    map: &'static [NonNullPtr<LimineMemmapEntry>],
-    next: usize,
-}
-
 /// Starts allocation of memory
 pub unsafe fn init() -> PageFrameAllocator {
     serial_println!("Initializing memory...");
@@ -93,6 +87,20 @@ pub unsafe fn init() -> PageFrameAllocator {
 
     // unsafe
     let mut mapper = get_mapper();
+    let pml4 = mapper.level_4_table();
+
+    // preallocate the upper half so it can be allocated across all address spaces at once
+    for i in 256..512 {
+        // only allocate pages that havent been allocated yet
+        if !pml4[i].flags().contains(PageTableFlags::PRESENT) {
+            let frame = frame_allocator.allocate_frame().expect("Out of memory");
+
+            pml4[i] = PageTableEntry::new();
+            pml4[i].set_frame(frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
+        } else {
+            serial_println!("skipping frame {}", i);
+        }
+    }
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
     init_gdt();
@@ -112,12 +120,16 @@ fn init_gdt() {
 }
 
 /// Returns the currently active level 4 page table
-unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut PageTable {
+unsafe fn active_pml4() -> &'static mut PageTable {
     use x86_64::registers::control::Cr3;
 
     let (level_4_table_frame, _) = Cr3::read();
-    let phys = level_4_table_frame.start_address();
-    let virt = physical_memory_offset + phys.as_u64();
+
+    get_pml4(level_4_table_frame.start_address())
+}
+
+unsafe fn get_pml4(addr: PhysAddr) -> &'static mut PageTable {
+    let virt = VirtAddr::new(physical_offset()) + addr.as_u64();
     let table: *mut PageTable = virt.as_mut_ptr();
 
     &mut *table
@@ -131,8 +143,57 @@ pub unsafe fn get_mapper<'a>() -> OffsetPageTable<'a> {
     let physical_memory_offset = VirtAddr::new(physical_offset());
 
     // unsafe
-    let level_4_table = unsafe { active_level_4_table(physical_memory_offset) };
+    let level_4_table = active_pml4();
+
     OffsetPageTable::new(level_4_table, physical_memory_offset)
+}
+
+pub unsafe fn new_pml4(frame_allocator: &mut PageFrameAllocator) -> PhysFrame {
+    let frame = frame_allocator.allocate_frame().expect("Out of memory");
+
+    let pml4_start = frame.start_address();
+    let offset = VirtAddr::new(physical_offset());
+
+    let new_pml4 = get_pml4(pml4_start);
+    let current_pml4 = active_pml4();
+    
+    let mut new_mapper = OffsetPageTable::new(new_pml4, offset);
+    let mut old_mapper = OffsetPageTable::new(current_pml4, offset);
+
+    let new_table = new_mapper.level_4_table();
+    let old_table = old_mapper.level_4_table();
+
+    for i in 256..512 {
+        new_table[i] = old_table[i].clone();
+    }
+
+    frame
+}
+
+pub unsafe fn allocate_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlags, frame_allocator: &mut PageFrameAllocator) -> Result<(), MapToError<Size4KiB>> {
+    let start_page = Page::containing_address(start);
+    let end_page = Page::containing_address(end);
+
+    let page_range = Page::range_inclusive(start_page, end_page);
+    let mut mapper = get_mapper();
+
+    for page in page_range {
+        let frame = frame_allocator
+            .allocate_frame()
+            .ok_or(MapToError::FrameAllocationFailed)?;
+
+        unsafe {
+            mapper.map_to(page, frame, flags, frame_allocator)?.flush();
+        }
+    }
+
+    Ok(())
+}
+
+/// Allocates physical frames
+pub struct PageFrameAllocator {
+    map: &'static [NonNullPtr<LimineMemmapEntry>],
+    next: usize,
 }
 
 impl PageFrameAllocator {

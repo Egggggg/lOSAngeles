@@ -54,7 +54,6 @@ pub fn draw_bitmap(x: usize, y: usize, size: usize, bitmap: &[u8], color: u16) {
     }
 
     if y + bitmap.len() * size >= FB.width as usize {
-        serial_println!("y: {}\nbitmap.len: {}\nsize: {}\nfb.width: {}", y, bitmap.len(), size, FB.width);
         panic!("Too far down");
     }
     

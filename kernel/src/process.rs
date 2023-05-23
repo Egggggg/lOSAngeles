@@ -2,9 +2,22 @@ use core::{arch:: asm, ptr::copy_nonoverlapping};
 
 use x86_64::{structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags}, VirtAddr};
 
-use crate::{memory, serial_println};
+use crate::{memory, serial_println, println, vga, tty};
+
+mod elf;
 
 const USERSPACE_START: u64 = 0x_6000_0000_0000;
+
+pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
+    use x86_64::registers::control::{Cr3, Cr3Flags};
+
+    let new_cr3 = memory::new_pml4(frame_allocator);
+
+    Cr3::write(new_cr3, Cr3Flags::empty());
+
+    let program = include_bytes!("../programs/first.elf");
+    elf::load_elf(program, frame_allocator).unwrap();
+}
 
 // TODO: Keep PIC interrupts working after sysret (TSS I think)
 pub unsafe fn test(frame_allocator: &mut memory::PageFrameAllocator) {

@@ -1,2 +1,0 @@
-[alias]
-buildos = "run --manifest-path ./buildos/Cargo.toml --"

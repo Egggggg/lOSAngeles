@@ -30,7 +30,7 @@ pub extern "C" fn _start() {
     vga::draw_bitmap(69, 69, 1, &[0x80], JEDD_COLOR);
     println!("Jedd is on the loose");
 
-    vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);
+    // vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);
 
     let mut cool: Vec<usize> = Vec::with_capacity(32);
 
@@ -42,10 +42,7 @@ pub extern "C" fn _start() {
 
     // unsafe { process::test(&mut frame_allocator); }
 
-    serial_println!("not lost");
-    println!("JESSE!!!\nWE NEED TO COOK!!!!!!");
-    println!("Riddle me this Batman...\nWhy do they call it oven when you of in the cold food of out hot eat the food???");
-    println!("Goddamit robin");
+    unsafe { process::enter_new(&mut frame_allocator) };
 
     loop {}
 }

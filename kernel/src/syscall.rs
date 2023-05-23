@@ -1,8 +1,8 @@
 use core::arch::asm;
 
-use x86_64::{registers, VirtAddr, instructions::{port::Port, hlt}};
+use x86_64::{registers, VirtAddr};
 
-use crate::{serial_println, interrupts};
+use crate::{serial_println, interrupts, println};
 
 pub unsafe fn init_syscalls() {
     {
@@ -46,7 +46,7 @@ pub unsafe fn _syscall() {
     );
 
     serial_println!("Welcome to syscall");
-    serial_println!("Syscall number {}", number);
+    println!("Syscall number {}", number);
 
     asm!(
         "int3",

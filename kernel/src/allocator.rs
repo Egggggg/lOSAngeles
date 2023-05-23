@@ -4,8 +4,8 @@ use x86_64::{structures::paging::{FrameAllocator, Size4KiB, mapper::MapToError, 
 
 use bump::BumpAllocator;
 
-// could choose almost anywhere, i just like this number
-pub const HEAP_START: usize = 0x_2323_2323_0000;
+// easier if it's in the top half
+pub const HEAP_START: usize = 0xFFFF_8323_2323_0000;
 
  // 100 KiB
 pub const HEAP_SIZE: usize = 100 * 1024;
