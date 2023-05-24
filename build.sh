@@ -67,4 +67,6 @@ umount img_mount
 # Needs root
 losetup -d ${USED_LOOPBACK}
 
+chmod 777 target/disk.img
+
 echo "Build successful"

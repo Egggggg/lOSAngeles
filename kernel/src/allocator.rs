@@ -4,6 +4,8 @@ use x86_64::{structures::paging::{FrameAllocator, Size4KiB, mapper::MapToError, 
 
 use bump::BumpAllocator;
 
+use crate::syscall;
+
 // easier if it's in the top half
 pub const HEAP_START: usize = 0xFFFF_8323_2323_0000;
 

@@ -6,18 +6,22 @@ use core::{panic::PanicInfo, arch::asm};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
-    let e = 23_u64;
-    let r = e * 3;
+    let e = 20_u64;
+    let r = nice(e);
 
     unsafe {
         asm!(
             "mov rax, {0}",
-            "mov rdx, rsp",
+            "mov rdx, {1}",
             "syscall",
             in(reg) e,
-            // in(reg) r,
+            in(reg) r,
         );
     }
+}
+
+fn nice(e: u64) -> u64 {
+    e * 3 + 9 + 31
 }
 
 #[panic_handler]

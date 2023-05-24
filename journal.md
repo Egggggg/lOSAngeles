@@ -61,3 +61,7 @@ TTY that can only output so far, kinda fucked up it pushes Jedd off the screen
 ## Day 13
 
 Can now load ELF files and jump into them, still working on stack stuff
+
+## Day 14
+
+Stack switching is working I think, but the entire `0xffff_9000_0000_0000 : 0xffff_9fff_ffff_ffff` area is cursed (i cant allocate anything in there once I've preallocated the higher half, but all the rest of the address space that I've tested works)

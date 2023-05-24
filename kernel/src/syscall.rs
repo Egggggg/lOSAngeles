@@ -1,34 +1,22 @@
 use core::arch::asm;
 
-use x86_64::{registers::{self, segmentation::Segment64}, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator}};
+use x86_64::{registers::{self, segmentation::Segment64}, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator, PageTable, mapper::MapToError}};
 
-use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator}};
+use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}};
 
-const KERNEL_GS: u64 = 0x9000_0000_0000;
-const USER_GS: u64 = 0x9000_0000_0800;
+pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
+const USER_GS: u64 = 0xFFFF_A000_0000_1000;
 
 #[no_mangle]
 pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     serial_println!("initializing syscalls");
 
-    {
-        use registers::{control::{Cr4, Cr4Flags}, model_specific::{Efer, EferFlags}};
-        
-        let mut efer_flags = Efer::read();
-        efer_flags.set(EferFlags::SYSTEM_CALL_EXTENSIONS, true);
+    use registers::model_specific::{Efer, EferFlags};
+    
+    let mut efer_flags = Efer::read();
+    efer_flags.set(EferFlags::SYSTEM_CALL_EXTENSIONS, true);
 
-        Efer::write(efer_flags);
-
-        // let mut cr4_flags = Cr4::read();
-
-        // serial_println!("{:?}", cr4_flags);
-        
-        // cr4_flags.set(Cr4Flags::FSGSBASE, true);
-
-        // serial_println!("{:?}", cr4_flags);
-
-        // Cr4::write(cr4_flags);
-    }
+    Efer::write(efer_flags);
 
     let syscall_addr: *const fn() = _syscall as *const fn();
 
@@ -53,7 +41,11 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 
     let frame = frame_allocator.allocate_frame().unwrap();
-    mapper.map_to(Page::containing_address(kernel_gs), frame, flags, frame_allocator).unwrap().flush();
+    let page = Page::containing_address(kernel_gs);
+
+    if mapper.translate_page(page).is_err() {
+        mapper.map_to(page, frame, flags, frame_allocator).unwrap().flush();
+    }
 
     registers::model_specific::GsBase::write(kernel_gs);
     registers::model_specific::KernelGsBase::write(user_gs);
