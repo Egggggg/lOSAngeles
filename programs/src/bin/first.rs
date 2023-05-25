@@ -4,24 +4,19 @@
 
 use core::{panic::PanicInfo, arch::asm};
 
+use programs::serial::serial_print;
+
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
-    let e = 20_u64;
-    let r = nice(e);
-
-    unsafe {
-        asm!(
-            "mov rax, {0}",
-            "mov rdx, {1}",
-            "syscall",
-            in(reg) e,
-            in(reg) r,
-        );
-    }
+    serial_print(b"nice\ncool\ngood\n");
+    exit();
 }
 
-fn nice(e: u64) -> u64 {
-    e * 3 + 9 + 31
+pub unsafe fn exit() {
+    asm!(
+        "mov rax, $0x00",
+        "syscall",
+    );
 }
 
 #[panic_handler]

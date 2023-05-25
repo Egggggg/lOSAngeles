@@ -52,7 +52,7 @@ pub fn init() {
         PICS.lock().initialize();
         // Limine starts the kernel with all IRQs masked
         // we only want to unmask the timer and keyboard for now
-        // PICS.lock().write_masks(0xFC, 0xFF);
+        PICS.lock().write_masks(0xFC, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
@@ -118,6 +118,8 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let mut keyboard = crate::devices::KEYBOARD.lock();
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
+
+    serial_print!("Key");
 
     keyboard.handle_key(scancode);
 

@@ -2,10 +2,12 @@ use core::arch::asm;
 
 use x86_64::{registers::{self, segmentation::Segment64}, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator, PageTable, mapper::MapToError}};
 
-use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}};
+use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}, process::sysret, syscall::serial::send_serial};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
-const USER_GS: u64 = 0xFFFF_A000_0000_1000;
+const USER_GS: u64 = 0xFFFF_A000_0000_0100;
+
+mod serial;
 
 #[no_mangle]
 pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
@@ -19,8 +21,6 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     Efer::write(efer_flags);
 
     let syscall_addr: *const fn() = _syscall as *const fn();
-
-    serial_println!("syscall_addr: {:p}", syscall_addr);
 
     // set the syscall address
     let virt_syscall_addr = VirtAddr::from_ptr(syscall_addr);
@@ -43,7 +43,9 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     let frame = frame_allocator.allocate_frame().unwrap();
     let page = Page::containing_address(kernel_gs);
 
-    if mapper.translate_page(page).is_err() {
+    let translation = mapper.translate_page(page);
+
+    if translation.is_err() {
         mapper.map_to(page, frame, flags, frame_allocator).unwrap().flush();
     }
 
@@ -53,33 +55,59 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
 
 #[no_mangle]
 pub unsafe fn _syscall() {
+    let rcx: *const ();
     let number: u64;
-    let arg: u64;
-    
+
+    let arg1: u64;
+    let arg2: u64;
+
     asm!(
-        "swapgs",
-        "mov rsp, gs:0",
-        "mov {0}, rax",
-        "mov {1}, rdx",
-        out(reg) number,
-        out(reg) arg,
+        "mov gs:0, rsp",    // move user stack pointer into user gs
+        "swapgs",   // switch to kernel gs
+        "mov rsp, gs:0",    // move kernel stack pointer from kernel gs
+    );
+
+    asm!(
+        "mov r10, rcx", // return address
+        out("r10") rcx,
+    );
+
+    asm!(
+        "mov r10, rax",
+        out("r10") number,
+    );
+
+    asm!(
+        "mov r10, rdx",
+        out("r10") arg1,
+    );
+
+    asm!(
+        "mov r10, r8",
+        out("r10") arg2,
     );
 
     serial_println!("Welcome to syscall");
-    println!("Syscall number {}", number);
-    println!("Syscall arg: {}", arg);
+    println!("Syscall number {:#06X}", number);
+    println!("Syscall arg 1: {:#018X}", arg1);
+    println!("Syscall arg 2: {:#018X}", arg2);
 
-    asm!(
-        "int3",
-    );
+    let rax = match number {
+        0x00 => {
+            println!("Process exited");
+            loop {}
+        }
+        0x130 => {
+            let start = arg1 as *const u8;
+            let arg2_bytes = arg2.to_le_bytes();
+            let length = arg2_bytes[0] as u16 + ((arg2_bytes[1] as u16) << 8);
+            match send_serial(start, length) { 
+                Ok(_) => 0,
+                Err(_) => 1,
+            }
+        }
+        _ => 0x1000,
+    };
 
-    serial_println!("After breakpoint");
-
-    let pic_masks = interrupts::PICS.lock().read_masks();
-
-    serial_println!("PIC masks: [{:#04X}, {:#04X}]", pic_masks[0], pic_masks[1]);
-
-    // TODO: Log CPU state
-    
-    loop {}
+    sysret(rcx, rax);
 }

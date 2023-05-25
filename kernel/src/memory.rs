@@ -103,16 +103,6 @@ pub unsafe fn init() -> PageFrameAllocator {
         }
     }
 
-    {
-        let page: Page<Size4KiB> = Page::from_start_address(VirtAddr::new(0xFFFF_9000_0000_0000)).unwrap();
-        let frame = frame_allocator.allocate_frame().unwrap();
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-        let index = page.page_table_index(x86_64::structures::paging::page_table::PageTableLevel::Four);
-        serial_println!("index {:?}", index);
-
-        mapper.map_to(page, frame, flags, &mut frame_allocator).unwrap().flush();
-    }
-
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
     init_gdt();
 

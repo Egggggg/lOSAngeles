@@ -1,14 +1,11 @@
-use core::{arch:: asm, ptr::copy_nonoverlapping};
+use core::arch:: asm;
 
-use lazy_static::lazy_static;
-use spin::Mutex;
-use x86_64::{structures::paging::{FrameAllocator, Mapper, Page, PageTableFlags}, VirtAddr};
+use x86_64::{structures::paging::{Mapper, Page, PageTableFlags}, VirtAddr};
 
-use crate::{memory, serial_println, println, vga, tty};
+use crate::{memory, serial_println};
 
 mod elf;
 
-const USERSPACE_START: u64 = 0x6000_0000_0000;
 const STACK: u64 = 0x6800_0000_0000;
 
 pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
@@ -32,51 +29,28 @@ pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
     serial_println!("entry point: {:p}", entry);
     serial_println!("rsp: {:p}", rsp);
 
-    sysret(entry, rsp);
+    asm!(
+        "swapgs",   // switch to user gs
+        "mov gs:0, {0}",    // put user stack in there
+        "swapgs",   // switch back to kernel gs
+        in(reg) rsp,
+    );
+
+    sysret(entry, 0);
 }
 
 #[no_mangle]
-pub unsafe fn sysret(entry: *const (), rsp: *const ()) {
+pub unsafe fn sysret(rcx: *const (), rax: u64) {
     asm!(
-        "mov gs:0, rsp",
-        "swapgs",
-        "mov rcx, {0}",
-        "mov rsp, {1}",
-        ".byte $0x48",
-        "sysret",
-        in(reg) entry,
-        in(reg) rsp,
-    );
-}
-
-// TODO: Keep PIC interrupts working after sysret (TSS I think)
-pub unsafe fn test(frame_allocator: &mut memory::PageFrameAllocator) {
-    let mut mapper = memory::get_mapper();
-    let page = Page::from_start_address(VirtAddr::new(USERSPACE_START)).unwrap();
-    let frame = frame_allocator.allocate_frame().expect("Out of memory");
-    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE;
-
-    mapper.map_to(page, frame, flags, frame_allocator).unwrap().flush();
-
-    let src: *const u64 = userland as *const u64;
-    let dst: *mut u64 = USERSPACE_START as *mut u64;
-
-    copy_nonoverlapping(src, dst, 20);
-
-    // enter userspace !!
-    asm!(
-        "mov rcx, {}",
-        ".byte $0x48",
-        "sysret",
-        in(reg) USERSPACE_START,
-    );
-}
-
-#[naked]
-unsafe extern "C" fn userland() {
-    asm!(
-        "mov rax, $0x4277dc9",
-        "syscall",
-        options(noreturn),
+        "mov gs:0, rsp", // back up the stack pointer
+        "swapgs",   // switch to user gs
+        "mov rcx, {0}", // set target address
+        "mov rsp, gs:0", // load target stack
+        "mov r11, $0x200",  // set `if` flag in `rflags` (bit 9)
+        "mov rax, {1}", // set the return value
+        ".byte $0x48",  // rex.w prefix to return into 64 bit mode
+        "sysret",   // jump into user mode
+        in(reg) rcx,
+        in(reg) rax,
     );
 }
