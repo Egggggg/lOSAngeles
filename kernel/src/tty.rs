@@ -10,10 +10,10 @@ use crate::{vga, serial, serial_println};
 const CHAR_WIDTH: usize = 8;
 const CHAR_HEIGHT: usize = 16;
 const TTY_COLOR: u16 = 0xDDDD;
-const TTY_SIZE: usize = 2;
+const TTY_SCALE: usize = 1;
 
 lazy_static! {
-    pub static ref TTY1: Mutex<Tty> = Mutex::new(Tty::new(TTY_COLOR, TTY_SIZE));
+    pub static ref TTY1: Mutex<Tty> = Mutex::new(Tty::new(TTY_COLOR, TTY_SCALE));
 }
 
 /// A TTY for user interaction
@@ -24,22 +24,20 @@ pub struct Tty {
     x_max: usize,
     y_max: usize,
     color: u16,
-    size: usize,
+    scale: usize,
 }
 
 impl Tty {
-    pub fn new(color: u16, size: usize) -> Self {
+    pub fn new(color: u16, scale: usize) -> Self {
         let (x_max, y_max) = vga::get_dimensions();
-        
-        serial_println!("y_max: {}", y_max / (CHAR_HEIGHT * size) - 1);
 
         Self {
             x: 0,
             y: 0,
-            x_max: x_max / (CHAR_WIDTH * size) - 1,
-            y_max: y_max / (CHAR_HEIGHT * size) - 1,
+            x_max: x_max / (CHAR_WIDTH * scale) - 1,
+            y_max: y_max / (CHAR_HEIGHT * scale) - 1,
             color,
-            size,
+            scale,
         }
     }
 
@@ -62,7 +60,7 @@ impl Tty {
         self.x = 0;
         
         if self.y == self.y_max {
-            unsafe { vga::shift_up(CHAR_HEIGHT * self.size) };
+            unsafe { vga::shift_up(CHAR_HEIGHT * self.scale) };
         } else {
             self.y += 1;
         }
@@ -71,7 +69,7 @@ impl Tty {
     fn write_str_inner(&mut self, text: &str) {
         let space = self.x_max - self.x;
 
-        let put_str = |text| vga::put_str(self.x * CHAR_WIDTH * self.size, self.y * CHAR_HEIGHT * self.size, self.size, text, self.color);
+        let put_str = |text| vga::put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color);
     
         // if the text won't all fit on this line
         if text.len() > space {

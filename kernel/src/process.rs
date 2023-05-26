@@ -39,6 +39,7 @@ pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
     sysret(entry, 0);
 }
 
+// FIXME: The system crashes upon returning from a syscall, maybe stack problems
 #[no_mangle]
 pub unsafe fn sysret(rcx: *const (), rax: u64) {
     asm!(

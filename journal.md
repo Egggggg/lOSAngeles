@@ -65,3 +65,15 @@ Can now load ELF files and jump into them, still working on stack stuff
 ## Day 14
 
 Stack switching is working I think, but the entire `0xffff_9000_0000_0000 : 0xffff_9fff_ffff_ffff` area is cursed (i cant allocate anything in there once I've preallocated the higher half, but all the rest of the address space that I've tested works)
+
+## Day 15
+
+Basic syscall interface and a serial print syscall to go with it. No string formatting yet cause I still need to figure out user mode allocation
+
+## Day 16
+
+Added syscall for drawing bitmaps
+
+## Day 17
+
+Redid the way bitmaps are drawn, accidentally realized I had been squishing my characters, and started on the user side of the `draw_bitmap` syscall
