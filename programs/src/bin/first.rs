@@ -2,9 +2,9 @@
 #![no_std]
 #![no_main]
 
-use core::{panic::PanicInfo, arch::asm};
+use core::panic::PanicInfo;
 
-use programs::serial::serial_print;
+use programs::{exit, serial::serial_print};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -12,22 +12,10 @@ pub unsafe extern "C" fn _start() {
     exit();
 }
 
-pub unsafe fn exit() {
-    asm!(
-        "mov rax, $0x00",
-        "syscall",
-    );
-}
-
 #[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
+fn panic(_info: &PanicInfo) -> ! {
     unsafe {
-        asm!(
-            "mov rax, 400",
-            // "mov rdx, {}",
-            "syscall",
-            // in(reg) info as *const PanicInfo,
-        )
+        exit();
     };
 
     loop {}

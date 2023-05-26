@@ -42,18 +42,19 @@ pub fn put_str(x: usize, y: usize, size: usize, content: &str, color: u16) {
     for (i, c) in content.chars().enumerate() {
         let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
 
-        draw_bitmap(x + i * 8 * size, y, size, bitmap, color);
+        draw_bitmap(bitmap, x + i * 8 * size, y, color, 1, 8, size);
     }
 }
 
 /// Draws a bitmap to the screen
+/// `width` is the width in bytes, _not_ pixels
 /// `size` scales linearly in both directions
-pub fn draw_bitmap(x: usize, y: usize, size: usize, bitmap: &[u8], color: u16) {
-    if x + 8 * size >= FB.width as usize {
+pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, height: usize, scale: usize) {
+    if x + width * 8 * scale >= FB.width as usize {
         panic!("Too far right");
     }
 
-    if y + bitmap.len() * size >= FB.width as usize {
+    if y + height * scale >= FB.width as usize {
         panic!("Too far down");
     }
     
@@ -70,9 +71,9 @@ pub fn draw_bitmap(x: usize, y: usize, size: usize, bitmap: &[u8], color: u16) {
             let pixel = (row >> (7 - col)) & 1;
 
             if pixel != 0 {
-                for current_x in 0..size {
-                    for current_y in 0..size {
-                        let offset = col * size + current_x * (FB.bpp / 8) as usize + current_y * FB.pitch as usize;
+                for current_x in 0..scale {
+                    for current_y in 0..scale {
+                        let offset = col * scale + current_x * (FB.bpp / 8) as usize + current_y * FB.pitch as usize;
 
                         unsafe {
                             let current = base.offset(offset as isize);
@@ -84,7 +85,7 @@ pub fn draw_bitmap(x: usize, y: usize, size: usize, bitmap: &[u8], color: u16) {
             }
         }
 
-        base = unsafe { base.offset((size * FB.pitch as usize) as isize) };
+        base = unsafe { base.offset((scale * FB.pitch as usize) as isize) };
     }
 }
 

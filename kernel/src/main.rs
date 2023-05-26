@@ -27,7 +27,7 @@ pub extern "C" fn _start() {
 
     // heehoo thats the number
     println!("Deploying Jedd...");
-    vga::draw_bitmap(69, 69, 1, &[0x80], JEDD_COLOR);
+    vga::draw_bitmap(&[0x80], 69, 69, JEDD_COLOR, 1, 1, 1);
     println!("Jedd is on the loose");
 
     // vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);

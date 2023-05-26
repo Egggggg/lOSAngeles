@@ -1,13 +1,16 @@
 use core::arch::asm;
 
+use alloc::slice;
 use x86_64::{registers::{self, segmentation::Segment64}, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator, PageTable, mapper::MapToError}};
 
-use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}, process::sysret, syscall::serial::send_serial};
+use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}, process::sysret, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
 
+mod graphics;
 mod serial;
+
 
 #[no_mangle]
 pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
@@ -58,8 +61,9 @@ pub unsafe fn _syscall() {
     let rcx: *const ();
     let number: u64;
 
-    let arg1: u64;
-    let arg2: u64;
+    let rdi: u64;
+    let rsi: u64;
+    let rdx: u64;
 
     asm!(
         "mov gs:0, rsp",    // move user stack pointer into user gs
@@ -67,10 +71,10 @@ pub unsafe fn _syscall() {
         "mov rsp, gs:0",    // move kernel stack pointer from kernel gs
     );
 
-    asm!(
-        "mov r10, rcx", // return address
-        out("r10") rcx,
-    );
+    // asm!(
+    //     "mov r10, rcx", // return address
+    //     out("r10") rcx,
+    // );
 
     asm!(
         "mov r10, rax",
@@ -78,36 +82,65 @@ pub unsafe fn _syscall() {
     );
 
     asm!(
-        "mov r10, rdx",
-        out("r10") arg1,
+        "mov r10, rdi",
+        out("r10") rdi,
     );
 
     asm!(
-        "mov r10, r8",
-        out("r10") arg2,
+        "mov r10, rsi",
+        out("r10") rsi,
+    );
+
+    asm!(
+        "mov r10, rdx",
+        out("r10") rdx,
     );
 
     serial_println!("Welcome to syscall");
     println!("Syscall number {:#06X}", number);
-    println!("Syscall arg 1: {:#018X}", arg1);
-    println!("Syscall arg 2: {:#018X}", arg2);
+    println!("Syscall arg 1: {:#018X}", rdi);
+    println!("Syscall arg 2: {:#018X}", rsi);
+    println!("Syscall arg 3: {:#018X}", rdx);
 
     let rax = match number {
         0x00 => {
             println!("Process exited");
             loop {}
         }
+        0x100 => {
+            let bitmap_ptr = rdi as *const u8;
+            let rsi_bytes = rsi.to_le_bytes();
+
+            let x = rsi_bytes[6] as u16 | ((rsi_bytes[7] as u16) << 8);
+            let y = rsi_bytes[4] as u16 | ((rsi_bytes[5] as u16) << 8);
+            let color = rsi_bytes[2] as u16 | ((rsi_bytes[3] as u16) << 8);
+            let width = rsi_bytes[1] as u8;
+            let height = rsi_bytes[0] as u8;
+            let scale = (rdx & 0xFF) as u8;
+
+            let bitmap = slice::from_raw_parts(bitmap_ptr, width as usize * height as usize);
+
+            match draw_bitmap(bitmap, x, y, color, width, height, scale) {
+                DrawBitmapStatus::InvalidLength => unreachable!(),
+                e => e as u8
+            }
+        }
         0x130 => {
-            let start = arg1 as *const u8;
-            let arg2_bytes = arg2.to_le_bytes();
-            let length = arg2_bytes[0] as u16 + ((arg2_bytes[1] as u16) << 8);
+            let start = rdi as *const u8;
+            let rsi_bytes = rsi.to_le_bytes();
+            let length = rsi_bytes[0] as u16 | ((rsi_bytes[1] as u16) << 8);
+
             match send_serial(start, length) { 
                 Ok(_) => 0,
                 Err(_) => 1,
             }
         }
-        _ => 0x1000,
+        _ => 0xFF,
     };
 
-    sysret(rcx, rax);
+    println!("Outta here");
+
+    loop {}
+
+    // sysret(rcx, rax);
 }
