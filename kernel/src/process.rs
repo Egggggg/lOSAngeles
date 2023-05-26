@@ -44,13 +44,13 @@ pub unsafe fn sysret(rcx: *const (), rax: u64) {
     asm!(
         "mov gs:0, rsp", // back up the stack pointer
         "swapgs",   // switch to user gs
-        "mov rcx, {0}", // set target address
         "mov rsp, gs:0", // load target stack
         "mov r11, $0x200",  // set `if` flag in `rflags` (bit 9)
-        "mov rax, {1}", // set the return value
+        "mov rcx, rcx",
+        "mov rax, rax",
         ".byte $0x48",  // rex.w prefix to return into 64 bit mode
         "sysret",   // jump into user mode
-        in(reg) rcx,
-        in(reg) rax,
+        in("rcx") rcx,
+        in("rax") rax,
     );
 }

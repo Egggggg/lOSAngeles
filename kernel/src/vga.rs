@@ -42,7 +42,7 @@ pub fn put_str(x: usize, y: usize, size: usize, content: &str, color: u16) {
     for (i, c) in content.chars().enumerate() {
         let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
 
-        draw_bitmap(bitmap, x + i * 8 * size, y, color, 1, 8, size);
+        draw_bitmap(bitmap, x + i * 8 * size, y, color, 1, 16, size);
     }
 }
 
@@ -57,35 +57,36 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
     if y + height * scale >= FB.width as usize {
         panic!("Too far down");
     }
-    
-    let color_bytes = color.to_le_bytes();
 
     // `fb.bpp` is bits per pixel, `fb.pitch` is bytes per scanline
-    let pixel_offset = ((x * (FB.bpp / 8) as usize) + (y * FB.pitch as usize)) as isize;
-    
-    // for each bit in the font at index `character`, draw a white pixel if it's 1, or do nothing if it's 0
-    let mut base: *mut u8 = unsafe { (FB.address as *mut u8).offset(pixel_offset) as *mut u8 };
+    let pixel_offset = (x + y * (FB.pitch / 2)) as isize;
+    let mut base: *mut u16 = unsafe { (FB.address as *mut u16).offset(pixel_offset) };
 
-    for row in bitmap {
-        for col in 0..8{
-            let pixel = (row >> (7 - col)) & 1;
+    for row in 0..height {
+        for col in 0..width {
+            let byte = bitmap[row * width + col];
+            let col_offset = col * scale * 8;
+            
+            for bit in 0..8 {
+                let pixel = (byte >> (7 - bit)) & 1;
 
-            if pixel != 0 {
-                for current_x in 0..scale {
+                if pixel != 0 {
                     for current_y in 0..scale {
-                        let offset = col * scale + current_x * (FB.bpp / 8) as usize + current_y * FB.pitch as usize;
+                        let offset = col_offset + bit * scale + current_y * (FB.pitch / 2);
+                        let mut current = unsafe { base.offset(offset as isize) };
 
-                        unsafe {
-                            let current = base.offset(offset as isize);
-                            current.write(color_bytes[0]);
-                            current.offset(1).write(color_bytes[1]);
+                        for _ in 0..scale {
+                            unsafe {
+                                current.write(color);
+                                current = current.offset(1);
+                            }
                         }
                     }
                 }
             }
         }
 
-        base = unsafe { base.offset((scale * FB.pitch as usize) as isize) };
+        base = unsafe { base.offset(((FB.pitch / 2) * scale) as isize) };
     }
 }
 

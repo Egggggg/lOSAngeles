@@ -3,7 +3,9 @@
 
 use core::arch::asm;
 
-pub mod serial;
+pub use syscalls::*;
+
+mod syscalls;
 
 pub unsafe fn exit() {
     asm!(

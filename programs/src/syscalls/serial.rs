@@ -6,11 +6,9 @@ pub fn serial_print(output: &[u8]) {
     unsafe {
         asm!(
             "mov rax, $0x130",
-            "mov rdx, r10",
-            "mov r8, r11",
             "syscall",
-            in("r10") output.as_ptr(),
-            in("r11") length,
+            in("rdi") output.as_ptr(),
+            in("rsi") length,
         );
     }
 }

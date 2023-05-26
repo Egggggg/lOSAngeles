@@ -65,35 +65,19 @@ pub unsafe fn _syscall() {
     let rsi: u64;
     let rdx: u64;
 
+    let rsp: u64;
+
     asm!(
+        "mov r8, rsp",
         "mov gs:0, rsp",    // move user stack pointer into user gs
         "swapgs",   // switch to kernel gs
         "mov rsp, gs:0",    // move kernel stack pointer from kernel gs
-    );
-
-    // asm!(
-    //     "mov r10, rcx", // return address
-    //     out("r10") rcx,
-    // );
-
-    asm!(
-        "mov r10, rax",
-        out("r10") number,
-    );
-
-    asm!(
-        "mov r10, rdi",
-        out("r10") rdi,
-    );
-
-    asm!(
-        "mov r10, rsi",
-        out("r10") rsi,
-    );
-
-    asm!(
-        "mov r10, rdx",
-        out("r10") rdx,
+        out("r8") rsp,
+        out("rax") number,
+        out("rcx") rcx,
+        out("rdi") rdi,
+        out("rsi") rsi,
+        out("rdx") rdx,
     );
 
     serial_println!("Welcome to syscall");
@@ -101,6 +85,7 @@ pub unsafe fn _syscall() {
     println!("Syscall arg 1: {:#018X}", rdi);
     println!("Syscall arg 2: {:#018X}", rsi);
     println!("Syscall arg 3: {:#018X}", rdx);
+    println!("Syscall RSP:   {:#018X}", rsp);
 
     let rax = match number {
         0x00 => {
@@ -122,7 +107,7 @@ pub unsafe fn _syscall() {
 
             match draw_bitmap(bitmap, x, y, color, width, height, scale) {
                 DrawBitmapStatus::InvalidLength => unreachable!(),
-                e => e as u8
+                e => e as u64
             }
         }
         0x130 => {
@@ -140,7 +125,7 @@ pub unsafe fn _syscall() {
 
     println!("Outta here");
 
-    loop {}
+    // loop {}
 
-    // sysret(rcx, rax);
+    sysret(rcx, rax);
 }

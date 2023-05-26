@@ -1,5 +1,6 @@
 use crate::vga;
 
+#[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum DrawBitmapStatus {
     Success = 0,
