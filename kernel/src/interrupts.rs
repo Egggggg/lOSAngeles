@@ -9,7 +9,7 @@ use x86_64::{
     instructions::port::Port,
 };
 
-use crate::{serial_print, serial_println};
+use crate::{serial_print, serial_println, memory};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -24,8 +24,12 @@ lazy_static! {
     /// Interrupt descriptor table, holds ISR vectors for each interrupt
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
+
+        unsafe {
+            idt.double_fault.set_handler_fn(double_fault_handler).set_stack_index(memory::DOUBLE_FAULT_IST_INDEX);
+        }
+
         idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.double_fault.set_handler_fn(double_fault_handler);
         idt.page_fault.set_handler_fn(page_fault_handler);
         idt.invalid_tss.set_handler_fn(invalid_tss_handler);
         idt.segment_not_present.set_handler_fn(segment_not_present_handler);

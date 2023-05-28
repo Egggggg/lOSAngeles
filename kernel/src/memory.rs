@@ -37,7 +37,7 @@ use x86_64::{
 use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
-const DOUBLE_FAULT_IST_INDEX: usize = 0;
+pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
@@ -54,7 +54,7 @@ lazy_static! {
     static ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
 
-        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX] = {
+        tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
             const STACK_SIZE: usize = 4096 * 5;
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
