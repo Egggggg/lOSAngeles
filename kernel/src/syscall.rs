@@ -1,9 +1,9 @@
 use core::arch::asm;
 
 use alloc::slice;
-use x86_64::{registers::{self, segmentation::Segment64}, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator, PageTable, mapper::MapToError}};
+use x86_64::{registers, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator}};
 
-use crate::{serial_println, interrupts, println, memory::{self, PageFrameAllocator, physical_offset}, process::sysret, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
+use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
@@ -79,6 +79,10 @@ pub unsafe fn syscall() {
 
     asm!(
         "mov rax, rax",
+        "mov rcx, rcx",
+        "mov rdi, rdi",
+        "mov rsi, rsi",
+        "mov rdx, rdx",
         out("rax") number,
         out("rcx") rcx,
         out("rdi") rdi,
@@ -99,20 +103,34 @@ pub unsafe fn syscall() {
         }
         0x100 => {
             let bitmap_ptr = rdi as *const u8;
-            let rsi_bytes = rsi.to_le_bytes();
 
+            let rsi_bytes = rsi.to_le_bytes();
             let x = rsi_bytes[6] as u16 | ((rsi_bytes[7] as u16) << 8);
             let y = rsi_bytes[4] as u16 | ((rsi_bytes[5] as u16) << 8);
             let color = rsi_bytes[2] as u16 | ((rsi_bytes[3] as u16) << 8);
             let width = rsi_bytes[1] as u8;
             let height = rsi_bytes[0] as u8;
+
             let scale = (rdx & 0xFF) as u8;
 
-            let bitmap = slice::from_raw_parts(bitmap_ptr, width as usize * height as usize);
-
-            match draw_bitmap(bitmap, x, y, color, width, height, scale) {
+            match draw_bitmap(bitmap_ptr, x, y, color, width, height, scale) {
                 DrawBitmapStatus::InvalidLength => unreachable!(),
                 e => e as u64
+            }
+        }
+        0x101 => {
+            let text_ptr = rdi as *const u8;
+            let length = rsi;
+
+            let rdx_bytes = rdx.to_le_bytes();
+            let x = rdx_bytes[6] as u16 | ((rdx_bytes[7] as u16) << 8);
+            let y = rdx_bytes[4] as u16 | ((rdx_bytes[5] as u16) << 8);
+            let color = rdx_bytes[2] as u16 | ((rdx_bytes[3] as u16) << 8);
+            let scale = (rdx & 0xFF) as u8;
+
+            match graphics::draw_string(text_ptr, length, x, y, color, scale) {
+                Ok(_) => 0,
+                Err(_) => 1,
             }
         }
         0x130 => {
@@ -128,9 +146,13 @@ pub unsafe fn syscall() {
         _ => 0xFF,
     };
 
-    println!("Outta here");
-
     // loop {}
 
-    sysret(rcx, rax);
+    asm!(
+        "mov rax, rax",
+        "mov rcx, rcx",
+        "call _sysret_asm",
+        in("rax") rax,
+        in("rcx") rcx,
+    );
 }

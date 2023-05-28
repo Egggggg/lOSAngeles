@@ -33,25 +33,23 @@ pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
         "swapgs",   // switch to user gs
         "mov gs:0, {0}",    // put user stack in there
         "swapgs",   // switch back to kernel gs
+        "mov rcx, rcx",
+        "call _sysret_asm",
         in(reg) rsp,
+        in("rcx") entry,    // jump to entry point
     );
-
-    sysret(entry, 0);
 }
 
-// FIXME: The system crashes upon returning from a syscall, maybe stack problems
+#[naked]
 #[no_mangle]
-pub unsafe fn sysret(rcx: *const (), rax: u64) {
+pub unsafe extern "C" fn _sysret_asm() {
     asm!(
         "mov gs:0, rsp", // back up the stack pointer
         "swapgs",   // switch to user gs
-        "mov rsp, gs:0", // load target stack
-        "mov r11, $0x200",  // set `if` flag in `rflags` (bit 9)
-        "mov rcx, rcx",
-        "mov rax, rax",
+        "mov rsp, gs:0", // load user stack
+        "mov r11, $0x200",  // set `IF` flag in `rflags` (bit 9)
         ".byte $0x48",  // rex.w prefix to return into 64 bit mode
         "sysret",   // jump into user mode
-        in("rcx") rcx,
-        in("rax") rax,
+        options(noreturn)
     );
 }

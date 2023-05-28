@@ -38,11 +38,11 @@ struct Framebuffer {
 }
 
 /// Draws a string to the screen
-pub fn put_str(x: usize, y: usize, size: usize, content: &str, color: u16) {
-    for (i, c) in content.chars().enumerate() {
+pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16) {
+    for (i, c) in text.chars().enumerate() {
         let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
 
-        draw_bitmap(bitmap, x + i * 8 * size, y, color, 1, 16, size);
+        draw_bitmap(bitmap, x + i * 8 * scale, y, color, 1, 16, scale);
     }
 }
 

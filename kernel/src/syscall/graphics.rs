@@ -1,4 +1,6 @@
-use crate::vga;
+use alloc::{slice, string::{String, FromUtf8Error}};
+
+use crate::{vga, println, print, serial_println};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -9,8 +11,10 @@ pub enum DrawBitmapStatus {
     InvalidLength = 30,
 }
 
-pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
+pub fn draw_bitmap(bitmap_ptr: *const u8, x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
     use DrawBitmapStatus::*;
+
+    let bitmap = unsafe { slice::from_raw_parts(bitmap_ptr, width as usize * height as usize) };
 
     // the bitmap must have `height` segments of `width` values
     if width as usize * height as usize != bitmap.len() {
@@ -29,4 +33,15 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height:
     vga::draw_bitmap(bitmap, x as usize, y as usize, color, width as usize, height as usize, scale as usize);
 
     Success
+}
+
+pub fn draw_string(text_ptr: *const u8, length: u64, x: u16, y: u16, color: u16, scale: u8) -> Result<(), FromUtf8Error> {
+    let text_bytes = unsafe { slice::from_raw_parts(text_ptr , length as usize) };
+    let text = String::from_utf8(text_bytes.to_vec())?;
+    
+    serial_println!("{}", text);
+    
+    vga::put_str(x as usize, y as usize, scale as usize, &text, color);
+
+    Ok(())
 }
