@@ -23,7 +23,7 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
 
     Efer::write(efer_flags);
 
-    let syscall_addr: *const fn() = _syscall as *const fn();
+    let syscall_addr: *const fn() = _syscall_asm as *const fn();
 
     // set the syscall address
     let virt_syscall_addr = VirtAddr::from_ptr(syscall_addr);
@@ -56,8 +56,20 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     registers::model_specific::KernelGsBase::write(user_gs);
 }
 
+#[naked]
 #[no_mangle]
-pub unsafe fn _syscall() {
+pub unsafe extern "C" fn _syscall_asm() {
+    asm!(
+        "mov gs:0, rsp",
+        "swapgs",
+        "mov rsp, gs:0",
+        "call syscall",
+        options(noreturn),
+    );
+}
+
+#[no_mangle]
+pub unsafe fn syscall() {
     let rcx: *const ();
     let number: u64;
 
@@ -65,14 +77,8 @@ pub unsafe fn _syscall() {
     let rsi: u64;
     let rdx: u64;
 
-    let rsp: u64;
-
     asm!(
-        "mov r8, rsp",
-        "mov gs:0, rsp",    // move user stack pointer into user gs
-        "swapgs",   // switch to kernel gs
-        "mov rsp, gs:0",    // move kernel stack pointer from kernel gs
-        out("r8") rsp,
+        "mov rax, rax",
         out("rax") number,
         out("rcx") rcx,
         out("rdi") rdi,
@@ -85,7 +91,6 @@ pub unsafe fn _syscall() {
     println!("Syscall arg 1: {:#018X}", rdi);
     println!("Syscall arg 2: {:#018X}", rsi);
     println!("Syscall arg 3: {:#018X}", rdx);
-    println!("Syscall RSP:   {:#018X}", rsp);
 
     let rax = match number {
         0x00 => {

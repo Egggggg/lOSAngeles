@@ -77,3 +77,7 @@ Added syscall for drawing bitmaps
 ## Day 17
 
 Redid the way bitmaps are drawn, accidentally realized I had been squishing my characters, and started on the user side of the `draw_bitmap` syscall
+
+## Day 18
+
+Fixed the page fault that was happening upon returning to a process (i had my syscalls go straight to a Rust function cause I thought calling it from assembly wouldnt put it on the stack which thinking back doesn't make as much sense as I thought it did)

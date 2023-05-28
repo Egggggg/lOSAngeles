@@ -1,5 +1,6 @@
 use core::arch::asm;
 
+#[no_mangle]
 pub fn serial_print(output: &[u8]) {
     let length = output.len();
 
