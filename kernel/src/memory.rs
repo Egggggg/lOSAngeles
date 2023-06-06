@@ -38,6 +38,7 @@ use crate::{allocator, serial_println};
 
 const FRAME_SIZE: usize = 4096;
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
+pub const HARDWARE_IST_INDEX: u16 = 1;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
@@ -63,6 +64,17 @@ lazy_static! {
             stack_end
         };
 
+        tss.interrupt_stack_table[HARDWARE_IST_INDEX as usize] = {
+            const STACK_SIZE: usize = 4096 * 5;
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+            serial_println!("IRQ Stack: {:p}", unsafe { STACK.as_ptr() });
+
+            let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
+            let stack_end = stack_start + STACK_SIZE;
+            stack_end
+        };
+    
         tss
     };
 
@@ -71,8 +83,8 @@ lazy_static! {
         let mut gdt = gdt::GlobalDescriptorTable::new();
         gdt.add_entry(gdt::Descriptor::kernel_code_segment());
         gdt.add_entry(gdt::Descriptor::kernel_data_segment());
-        gdt.add_entry(gdt::Descriptor::user_code_segment());
         gdt.add_entry(gdt::Descriptor::user_data_segment());
+        gdt.add_entry(gdt::Descriptor::user_code_segment());
         gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
         
         gdt

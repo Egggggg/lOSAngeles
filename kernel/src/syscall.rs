@@ -1,9 +1,9 @@
-use core::arch::asm;
+use core::{arch::asm, fmt::Write};
 
 use alloc::slice;
-use x86_64::{registers, VirtAddr, structures::paging::{PageTableFlags, Mapper, Page, FrameAllocator}};
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
+use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}, tty::TTY1};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
@@ -14,7 +14,7 @@ mod serial;
 
 #[no_mangle]
 pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
-    serial_println!("initializing syscalls");
+    serial_println!("Initializing syscalls");
 
     use registers::model_specific::{Efer, EferFlags};
     
@@ -32,10 +32,12 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     // syscall:
     //  cs = syscall_cs
     //  ss = syscall_cs + 8
-    // sysret: (after right shift by 3)
-    //  cs = sysret_cs + 16     (in 64 bit mode)
-    //  ss = sysret_cs + 16 + 8 (always cs + 8)
-    registers::model_specific::Star::write_raw(11, 8);
+    // sysret:
+    //  cs = sysret_cs + 16 (in 64 bit mode)
+    //  ss = sysret_cs + 8
+    //  
+    //  bits 0:1 should always be 3 for sysret, that's the ring it goes to
+    registers::model_specific::Star::write_raw(19, 8);
 
     let mut mapper = memory::get_mapper();
 
@@ -54,6 +56,8 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
 
     registers::model_specific::GsBase::write(kernel_gs);
     registers::model_specific::KernelGsBase::write(user_gs);
+
+    serial_println!("Syscalls initialized")
 }
 
 #[naked]
@@ -129,6 +133,15 @@ pub unsafe fn syscall() {
             let scale = (rdx & 0xFF) as u8;
 
             match graphics::draw_string(text_ptr, length, x, y, color, scale) {
+                Ok(_) => 0,
+                Err(_) => 1,
+            }
+        }
+        0x102 => {
+            let text_ptr = rdi as *const u8;
+            let length = rsi;
+
+            match graphics::print(text_ptr, length) {
                 Ok(_) => 0,
                 Err(_) => 1,
             }

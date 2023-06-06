@@ -1,3 +1,5 @@
+use core::arch::asm;
+
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use x86_64::{
@@ -37,8 +39,10 @@ lazy_static! {
         idt.general_protection_fault.set_handler_fn(general_protection_handler);
         idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
 
-        idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler);
-        idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler);
+        unsafe {
+            idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler).set_stack_index(memory::HARDWARE_IST_INDEX);
+            idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler).set_stack_index(memory::HARDWARE_IST_INDEX);
+        }
 
         idt
     };
@@ -53,10 +57,12 @@ pub fn init() {
     init_idt();
 
     unsafe { 
-        PICS.lock().initialize();
+        let mut pics = PICS.lock();
+        pics.initialize();
+
         // Limine starts the kernel with all IRQs masked
         // we only want to unmask the timer and keyboard for now
-        PICS.lock().write_masks(0xFC, 0xFF);
+        pics.write_masks(0xFD, 0xFF);
     }
 
     x86_64::instructions::interrupts::enable();
@@ -75,8 +81,10 @@ impl InterruptIndex {
     }
 }
 
-#[no_mangle]
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
+    unsafe { asm!(
+        "2: jmp 2b",
+    ) };
     serial_println!("BREAKPOINT: {:?}", stack_frame);
 }
 
@@ -84,6 +92,7 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame,
     panic!("DOUBLE FAULT: {stack_frame:?}\nError code: {error_code:#018X}");
 }
 
+#[no_mangle]
 extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode) {
     use x86_64::registers::control::Cr2;
 
@@ -111,6 +120,7 @@ extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFram
     panic!("INVALID OPCODE: {stack_frame:?}");
 }
 
+#[no_mangle]
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     serial_print!(".");
 

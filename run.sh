@@ -4,6 +4,9 @@ AUDIO=alsa
 
 # added `-serial stdio` for debugging
 qemu-system-x86_64 \
+-d int \
+-D int.log \
+-no-reboot \
 -serial stdio \
 -m 512m \
 -cpu qemu64 \

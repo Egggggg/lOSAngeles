@@ -17,6 +17,7 @@ extern crate alloc;
 use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
+use x86_64::instructions::interrupts::without_interrupts;
 
 const JEDD_COLOR: u16 = 0b11111_111111_00000;
 
@@ -50,8 +51,11 @@ pub extern "C" fn _start() {
 fn init() -> memory::PageFrameAllocator {
     let mut frame_allocator = unsafe { memory::init() };
     interrupts::init();
-    unsafe { syscall::init_syscalls(&mut frame_allocator) };
-
+    
+    without_interrupts(|| {
+        unsafe { syscall::init_syscalls(&mut frame_allocator) };
+    });
+    
     frame_allocator
 }
 

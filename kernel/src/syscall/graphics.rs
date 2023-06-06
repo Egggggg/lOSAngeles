@@ -1,6 +1,6 @@
 use alloc::{slice, string::{String, FromUtf8Error}};
 
-use crate::{vga, println, print, serial_println};
+use crate::{vga, println, print, serial_println, tty};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
@@ -42,6 +42,15 @@ pub fn draw_string(text_ptr: *const u8, length: u64, x: u16, y: u16, color: u16,
     serial_println!("{}", text);
     
     vga::put_str(x as usize, y as usize, scale as usize, &text, color);
+
+    Ok(())
+}
+
+pub fn print(text_ptr: *const u8, length: u64) -> Result<(), FromUtf8Error> {
+    let text_bytes = unsafe { slice::from_raw_parts(text_ptr , length as usize) };
+    let text = String::from_utf8(text_bytes.to_vec())?;
+
+    tty::TTY1.lock().write_str(&text);
 
     Ok(())
 }

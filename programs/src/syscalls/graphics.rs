@@ -75,3 +75,25 @@ pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
 
     out
 }
+
+pub fn print(text: &[u8]) -> u64 {
+    let rdi = text.as_ptr();
+    let rsi = text.len();
+
+    let out: u64;
+
+    unsafe {
+        asm!(
+            "mov rax, $0x102",
+            "mov rdi, rdi",
+            "mov rsi, rsi",
+            "syscall",
+            "mov rax, rax",
+            in("rdi") rdi,
+            in("rsi") rsi,
+            lateout("rax") out,
+        );
+    }
+
+    out
+}

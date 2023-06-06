@@ -17,7 +17,8 @@ lazy_static! {
 }
 
 /// A TTY for user interaction
-/// `x_max` is inclusive maximum for columns
+/// `x_max` is inclusive maximum for column number
+/// `y_max` is inclusive maximum for row number
 pub struct Tty {
     x: usize,
     y: usize,
