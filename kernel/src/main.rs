@@ -14,7 +14,7 @@ mod tty;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo, arch::asm};
+use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
 use x86_64::instructions::interrupts::without_interrupts;
@@ -25,12 +25,6 @@ const JEDD_COLOR: u16 = 0b11111_111111_00000;
 pub extern "C" fn _start() {
     let mut frame_allocator = init();
     println!("Bepis");
-
-    unsafe {
-        asm!(
-            "int 3",
-        );
-    }
 
     // heehoo thats the number
     println!("Deploying Jedd...");
@@ -55,14 +49,16 @@ pub extern "C" fn _start() {
 }
 
 fn init() -> memory::PageFrameAllocator {
+    // idk how to get frame_allocator out of the `without_interrupts` closure so we're doing it this way
+    x86_64::instructions::interrupts::disable();
+
+    interrupts::init();
     let mut frame_allocator = unsafe { memory::init() };
+    unsafe { syscall::init_syscalls(&mut frame_allocator) };
 
-    without_interrupts(|| {
-        interrupts::init();
-        unsafe { syscall::init_syscalls(&mut frame_allocator) };
-    });
+    x86_64::instructions::interrupts::enable();
 
-    return frame_allocator;
+    frame_allocator
 }
 
 #[panic_handler]

@@ -40,10 +40,10 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     // registers::model_specific::Star::write_raw(19, 8);
 
     registers::model_specific::Star::write(
-        SegmentSelector::new(4, PrivilegeLevel::Ring3),
         SegmentSelector::new(3, PrivilegeLevel::Ring3),
-        SegmentSelector::new(1, PrivilegeLevel::Ring0),
-        SegmentSelector::new(2, PrivilegeLevel::Ring0)
+        SegmentSelector::new(2, PrivilegeLevel::Ring3),
+        SegmentSelector::new(0, PrivilegeLevel::Ring0),
+        SegmentSelector::new(1, PrivilegeLevel::Ring0)
     ).unwrap();
 
     let mut mapper = memory::get_mapper();

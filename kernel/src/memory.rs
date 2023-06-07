@@ -31,7 +31,7 @@ use x86_64::{
         self,
         segmentation::Segment
     },
-    PrivilegeLevel
+    PrivilegeLevel, instructions::interrupts::int3
 };
 
 use crate::{allocator, serial_println};
@@ -68,8 +68,6 @@ lazy_static! {
             const STACK_SIZE: usize = 4096 * 5;
             static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
 
-            serial_println!("IRQ Stack: {:p}", unsafe { STACK.as_ptr() });
-
             let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
             let stack_end = stack_start + STACK_SIZE;
             stack_end
@@ -89,9 +87,7 @@ lazy_static! {
         
         serial_println!("{:?}", tss_selector);
 
-        x86_64::instructions::interrupts::without_interrupts(|| {
-            unsafe { x86_64::instructions::tables::load_tss(tss_selector) };  
-        });
+        unsafe { x86_64::instructions::tables::load_tss(tss_selector) };
 
         gdt
     };
@@ -100,6 +96,7 @@ lazy_static! {
 /// Starts allocation of memory
 pub unsafe fn init() -> PageFrameAllocator {
     serial_println!("Initializing memory...");
+    init_gdt();
 
     let mut frame_allocator = PageFrameAllocator::new();
 
@@ -122,7 +119,6 @@ pub unsafe fn init() -> PageFrameAllocator {
     }
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-    init_gdt();
 
     serial_println!("Memory initialized");
 
