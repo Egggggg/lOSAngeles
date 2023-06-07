@@ -9,6 +9,7 @@ cd programs
 cargo build --target x86_64-angeles.json --bin first
 cd ..
 
+mkdir -p kernel/programs
 cp target/x86_64-angeles/debug/first.elf kernel/programs/first.elf
 
 echo "Building kernel"
