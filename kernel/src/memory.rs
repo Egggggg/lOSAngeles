@@ -85,8 +85,14 @@ lazy_static! {
         gdt.add_entry(gdt::Descriptor::kernel_data_segment());
         gdt.add_entry(gdt::Descriptor::user_data_segment());
         gdt.add_entry(gdt::Descriptor::user_code_segment());
-        gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
+        let tss_selector = gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
         
+        serial_println!("{:?}", tss_selector);
+
+        x86_64::instructions::interrupts::without_interrupts(|| {
+            unsafe { x86_64::instructions::tables::load_tss(tss_selector) };  
+        });
+
         gdt
     };
 }

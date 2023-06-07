@@ -82,9 +82,6 @@ impl InterruptIndex {
 }
 
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame) {
-    unsafe { asm!(
-        "2: jmp 2b",
-    ) };
     serial_println!("BREAKPOINT: {:?}", stack_frame);
 }
 

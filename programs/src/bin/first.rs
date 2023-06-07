@@ -11,6 +11,10 @@ pub unsafe extern "C" fn _start() {
     serial_print(b"nice\ncool\ngood\n");
     serial_print(b"sick\n");
 
+    asm!(
+        "int 3",
+    );
+
     match draw_bitmap(&[0x0F, 0xF0, 0xF0, 0x0F, 0x0F, 0xF0], 100, 100, 0b11111_000000_00000, 2, 3, 10) {
         DrawBitmapStatus::InvalidLength => { serial_print(b"Bitmap has an invalid length :("); },
         _ => {},
