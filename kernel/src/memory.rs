@@ -31,7 +31,8 @@ use x86_64::{
         self,
         segmentation::Segment
     },
-    PrivilegeLevel, instructions::interrupts::int3
+    instructions,
+    PrivilegeLevel,
 };
 
 use crate::{allocator, serial_println};
@@ -83,11 +84,7 @@ lazy_static! {
         gdt.add_entry(gdt::Descriptor::kernel_data_segment());
         gdt.add_entry(gdt::Descriptor::user_data_segment());
         gdt.add_entry(gdt::Descriptor::user_code_segment());
-        let tss_selector = gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
-        
-        serial_println!("{:?}", tss_selector);
-
-        unsafe { x86_64::instructions::tables::load_tss(tss_selector) };
+        gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
 
         gdt
     };
@@ -113,8 +110,6 @@ pub unsafe fn init() -> PageFrameAllocator {
 
             pml4[i] = PageTableEntry::new();
             pml4[i].set_frame(frame, PageTableFlags::PRESENT | PageTableFlags::WRITABLE);
-        } else {
-            serial_println!("skipping {}", i);
         }
     }
 
@@ -131,6 +126,7 @@ fn init_gdt() {
     unsafe {
         registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
         registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
+        instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
     }
 }
 
