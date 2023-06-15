@@ -61,7 +61,7 @@ pub unsafe  fn init() {
 
     // Limine starts the kernel with all IRQs masked
     // we only want to unmask the timer and keyboard for now (bits 0 and 1)
-    pics.write_masks(0xFC, 0xFF);
+    pics.write_masks(0xFD, 0xFF);
 
     // x86_64::instructions::interrupts::enable();
 }

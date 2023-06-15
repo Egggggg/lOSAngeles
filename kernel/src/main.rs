@@ -14,7 +14,7 @@ mod tty;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo};
+use core::{panic::PanicInfo, arch::asm};
 
 use alloc::vec::Vec;
 
@@ -22,7 +22,7 @@ const JEDD_COLOR: u16 = 0b11111_111111_00000;
 
 #[no_mangle]
 pub extern "C" fn _start() {
-    let mut frame_allocator = init();
+    let mut frame_allocator = unsafe { init() };
     println!("Bepis");
 
     // heehoo thats the number
@@ -47,8 +47,8 @@ pub extern "C" fn _start() {
     loop {}
 }
 
+#[no_mangle]
 unsafe fn init() -> memory::PageFrameAllocator {
-    // idk how to get frame_allocator out of the `without_interrupts` closure so we're doing it this way
     x86_64::instructions::interrupts::disable();
 
     interrupts::init();
@@ -56,6 +56,10 @@ unsafe fn init() -> memory::PageFrameAllocator {
     syscall::init_syscalls(&mut frame_allocator);
 
     x86_64::instructions::interrupts::enable();
+
+    asm!(
+        "int 3"
+    );
 
     frame_allocator
 }

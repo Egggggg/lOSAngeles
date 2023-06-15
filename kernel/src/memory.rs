@@ -120,14 +120,17 @@ pub unsafe fn init() -> PageFrameAllocator {
     frame_allocator
 }
 
-fn init_gdt() {
+unsafe fn init_gdt() {
     GDT.load();
 
-    unsafe {
-        registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
-        registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
-        instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
-    }
+    registers::segmentation::CS::set_reg(SegmentSelector::new(1, PrivilegeLevel::Ring0));
+    registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
+    instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
+
+    // let table = GDT.as_raw_slice();
+
+    // serial_println!("{:#018X?}", table);
+    // serial_println!("GDT loaded");
 }
 
 /// Returns the currently active level 4 page table

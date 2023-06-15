@@ -6,6 +6,7 @@ AUDIO=alsa
 qemu-system-x86_64 \
 -d int \
 -D int.log \
+-M smm=off \
 -no-reboot \
 -serial stdio \
 -m 512m \
