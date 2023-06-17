@@ -4,6 +4,7 @@ AUDIO=alsa
 
 # added `-serial stdio` for debugging
 qemu-system-x86_64 \
+-S -s \
 -d int \
 -D int.log \
 -M smm=off \

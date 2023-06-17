@@ -127,10 +127,12 @@ unsafe fn init_gdt() {
     registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
     instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
 
-    // let table = GDT.as_raw_slice();
+    let table = GDT.as_raw_slice();
+    let tss_addr = &TSS as *const _;
 
-    // serial_println!("{:#018X?}", table);
-    // serial_println!("GDT loaded");
+    serial_println!("   {:p}", tss_addr);
+    serial_println!("{:#018X?}", table);
+    serial_println!("GDT loaded");
 }
 
 /// Returns the currently active level 4 page table

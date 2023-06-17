@@ -39,10 +39,10 @@ lazy_static! {
         idt.general_protection_fault.set_handler_fn(general_protection_handler);
         idt.invalid_opcode.set_handler_fn(invalid_opcode_handler);
 
-        // unsafe {
-            idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler); //.set_stack_index(memory::HARDWARE_IST_INDEX);
-            idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler); //.set_stack_index(memory::HARDWARE_IST_INDEX);
-        // }
+        unsafe {
+            idt[InterruptIndex::Timer as usize].set_handler_fn(timer_interrupt_handler).set_stack_index(memory::HARDWARE_IST_INDEX);
+            idt[InterruptIndex::Keyboard as usize].set_handler_fn(keyboard_interrupt_handler).set_stack_index(memory::HARDWARE_IST_INDEX);
+        }
 
         idt
     };
@@ -54,6 +54,7 @@ fn init_idt() {
 
 /// Initializes interrupts
 pub unsafe  fn init() {
+    serial_println!("Initializing interrupts...");
     init_idt();
 
     let mut pics = PICS.lock();
@@ -61,7 +62,9 @@ pub unsafe  fn init() {
 
     // Limine starts the kernel with all IRQs masked
     // we only want to unmask the timer and keyboard for now (bits 0 and 1)
-    pics.write_masks(0xFD, 0xFF);
+    pics.write_masks(0xFC, 0xFF);
+
+    serial_println!("Interrupts initialized");
 
     // x86_64::instructions::interrupts::enable();
 }

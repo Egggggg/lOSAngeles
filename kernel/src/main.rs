@@ -57,10 +57,6 @@ unsafe fn init() -> memory::PageFrameAllocator {
 
     x86_64::instructions::interrupts::enable();
 
-    asm!(
-        "int 3"
-    );
-
     frame_allocator
 }
 
