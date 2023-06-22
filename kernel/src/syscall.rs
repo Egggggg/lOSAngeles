@@ -1,9 +1,8 @@
-use core::{arch::asm, fmt::Write};
+use core::arch::asm;
 
-use alloc::slice;
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}, tty::TTY1};
+use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
@@ -28,23 +27,12 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
     // set the syscall address
     let virt_syscall_addr = VirtAddr::from_ptr(syscall_addr);
     registers::model_specific::LStar::write(virt_syscall_addr);
-
-    // syscall:
-    //  cs = syscall_cs
-    //  ss = syscall_cs + 8
-    // sysret:
-    //  cs = sysret_cs + 16 (in 64 bit mode)
-    //  ss = sysret_cs + 8
-    //  
-    //  bits 0:1 should always be 3 for sysret, that's the ring it goes to
-    registers::model_specific::Star::write_raw(16 | 0b11, 8);
-
-    // registers::model_specific::Star::write(
-    //     SegmentSelector::new(4, PrivilegeLevel::Ring3),
-    //     SegmentSelector::new(3, PrivilegeLevel::Ring3),
-    //     SegmentSelector::new(1, PrivilegeLevel::Ring0),
-    //     SegmentSelector::new(2, PrivilegeLevel::Ring0)
-    // ).unwrap();
+    registers::model_specific::Star::write(
+        SegmentSelector::new(4, PrivilegeLevel::Ring3),
+        SegmentSelector::new(3, PrivilegeLevel::Ring3),
+        SegmentSelector::new(1, PrivilegeLevel::Ring0),
+        SegmentSelector::new(2, PrivilegeLevel::Ring0)
+    ).unwrap();
 
     let mut mapper = memory::get_mapper();
 

@@ -14,7 +14,7 @@ mod tty;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo, arch::asm};
+use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
 
@@ -42,7 +42,7 @@ pub extern "C" fn _start() {
 
     // unsafe { process::test(&mut frame_allocator); }
 
-    // unsafe { process::enter_new(&mut frame_allocator) };
+    unsafe { process::enter_new(&mut frame_allocator) };
 
     loop {}
 }
@@ -51,11 +51,13 @@ pub extern "C" fn _start() {
 unsafe fn init() -> memory::PageFrameAllocator {
     x86_64::instructions::interrupts::disable();
 
-    interrupts::init();
     let mut frame_allocator = memory::init();
+    interrupts::init();
     syscall::init_syscalls(&mut frame_allocator);
 
     x86_64::instructions::interrupts::enable();
+
+    serial_println!("interrupts enabled");
 
     frame_allocator
 }

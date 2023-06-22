@@ -19,14 +19,7 @@ pub unsafe extern "C" fn _start() {
     draw_string("gort", 0, 0, 0xFFFF, 10);
     print(b"me when i go fucking apeshit am i right");
 
-    loop_city();
-
     exit();
-}
-
-#[no_mangle]
-fn loop_city() {
-    loop {}
 }
 
 #[panic_handler]

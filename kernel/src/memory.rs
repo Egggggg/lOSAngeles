@@ -1,4 +1,4 @@
-use core::fmt::Debug;
+use core::{fmt::Debug};
 
 use lazy_static::lazy_static;
 use limine::{
@@ -86,6 +86,24 @@ lazy_static! {
         gdt.add_entry(gdt::Descriptor::user_code_segment());
         gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
 
+        // let ptr = &TSS as *const _ as u64;
+
+        // let mut low = 1 << 47;
+        // // base
+        // low.set_bits(16..40, ptr.get_bits(0..24));
+        // low.set_bits(56..64, ptr.get_bits(24..32));
+        // // limit (the `-1` in needed since the bound is inclusive)
+        // low.set_bits(0..16, (size_of::<TaskStateSegment>() - 1) as u64);
+        // // type (0b1001 = available 64-bit tss)
+        // low.set_bits(40..44, 0b1001);
+
+        // let mut high = 0;
+        // high.set_bits(0..32, ptr.get_bits(32..64));
+
+        // let tss_segment = gdt::Descriptor::SystemSegment(low, high);
+
+        // serial_println!("{:#X?}", tss_segment);
+
         gdt
     };
 }
@@ -120,6 +138,7 @@ pub unsafe fn init() -> PageFrameAllocator {
     frame_allocator
 }
 
+#[no_mangle]
 unsafe fn init_gdt() {
     GDT.load();
 
@@ -128,9 +147,11 @@ unsafe fn init_gdt() {
     instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
 
     let table = GDT.as_raw_slice();
-    let tss_addr = &TSS as *const _;
+    let tss_addr = &TSS as *const _ as u64;
+    let tss_ptr = &TSS as *const _;
 
-    serial_println!("   {:p}", tss_addr);
+    serial_println!("   {:#018X}", tss_addr);
+    serial_println!("   {:p}", tss_ptr);
     serial_println!("{:#018X?}", table);
     serial_println!("GDT loaded");
 }
