@@ -15,7 +15,8 @@ pub unsafe fn enter_new(frame_allocator: &mut memory::PageFrameAllocator) {
 
     Cr3::write(new_cr3, Cr3Flags::empty());
 
-    let program = include_bytes!("../programs/first.elf");
+    // the second directory ascension might just be a windows thing
+    let program = include_bytes!("../../target/programs/first.elf");
     let entry = elf::load_elf(program, frame_allocator).unwrap();
 
     let mut mapper = memory::get_mapper();
