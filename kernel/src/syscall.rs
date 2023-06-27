@@ -2,7 +2,7 @@ use core::arch::asm;
 
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial, graphics::{draw_bitmap, DrawBitmapStatus}}};
+use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
@@ -75,25 +75,32 @@ pub unsafe fn syscall() {
     let rdi: u64;
     let rsi: u64;
     let rdx: u64;
+    let r8: u64;
+    let r9: u64;
+    let sp: u64;
 
     asm!(
-        "mov rax, rax",
-        "mov rcx, rcx",
-        "mov rdi, rdi",
-        "mov rsi, rsi",
-        "mov rdx, rdx",
+        "swapgs",
+        "mov {sp}, gs:0",
+        "swapgs",
         out("rax") number,
         out("rcx") rcx,
         out("rdi") rdi,
         out("rsi") rsi,
         out("rdx") rdx,
+        out("r8") r8,
+        out("r9") r9,
+        sp = out(reg) sp,
     );
 
     serial_println!("Welcome to syscall");
-    println!("Syscall number {:#06X}", number);
-    println!("Syscall arg 1: {:#018X}", rdi);
-    println!("Syscall arg 2: {:#018X}", rsi);
-    println!("Syscall arg 3: {:#018X}", rdx);
+    // println!("Syscall number {:#06X}", number);
+    // println!("Syscall arg 1: {:#018X}", rdi);
+    // println!("Syscall arg 2: {:#018X}", rsi);
+    // println!("Syscall arg 3: {:#018X}", rdx);
+    // println!("Syscall arg 4: {:#018X}", r8);
+    // println!("Syscall arg 5: {:#018X}", r9);
+    // println!("Syscall arg 6: {:#018X} (stack)", sp);
 
     let rax = match number {
         0x00 => {
@@ -101,55 +108,16 @@ pub unsafe fn syscall() {
             loop {}
         }
         0x100 => {
-            let bitmap_ptr = rdi as *const u8;
-
-            let rsi_bytes = rsi.to_le_bytes();
-            let x = rsi_bytes[6] as u16 | ((rsi_bytes[7] as u16) << 8);
-            let y = rsi_bytes[4] as u16 | ((rsi_bytes[5] as u16) << 8);
-            let color = rsi_bytes[2] as u16 | ((rsi_bytes[3] as u16) << 8);
-            let width = rsi_bytes[1] as u8;
-            let height = rsi_bytes[0] as u8;
-
-            let scale = (rdx & 0xFF) as u8;
-
-            match draw_bitmap(bitmap_ptr, x, y, color, width, height, scale) {
-                DrawBitmapStatus::InvalidLength => unreachable!(),
-                e => e as u64
-            }
+            graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64
         }
         0x101 => {
-            let text_ptr = rdi as *const u8;
-            let length = rsi;
-
-            let rdx_bytes = rdx.to_le_bytes();
-            let x = rdx_bytes[6] as u16 | ((rdx_bytes[7] as u16) << 8);
-            let y = rdx_bytes[4] as u16 | ((rdx_bytes[5] as u16) << 8);
-            let color = rdx_bytes[2] as u16 | ((rdx_bytes[3] as u16) << 8);
-            let scale = (rdx & 0xFF) as u8;
-
-            match graphics::draw_string(text_ptr, length, x, y, color, scale) {
-                Ok(_) => 0,
-                Err(_) => 1,
-            }
+            graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64
         }
         0x102 => {
-            let text_ptr = rdi as *const u8;
-            let length = rsi;
-
-            match graphics::print(text_ptr, length) {
-                Ok(_) => 0,
-                Err(_) => 1,
-            }
+            graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64
         }
         0x130 => {
-            let start = rdi as *const u8;
-            let rsi_bytes = rsi.to_le_bytes();
-            let length = rsi_bytes[0] as u16 | ((rsi_bytes[1] as u16) << 8);
-
-            match send_serial(start, length) { 
-                Ok(_) => 0,
-                Err(_) => 1,
-            }
+            serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64
         }
         _ => 0xFF,
     };

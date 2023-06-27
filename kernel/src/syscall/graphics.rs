@@ -4,22 +4,28 @@ use crate::{vga, println, print, serial_println, tty};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
-pub enum DrawBitmapStatus {
+pub enum DrawStatus {
     Success = 0,
     TooWide,
     TooTall,
-    InvalidLength = 30,
+    InvalidUtf8 = 30,
 }
 
-pub fn draw_bitmap(bitmap_ptr: *const u8, x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
-    use DrawBitmapStatus::*;
+pub fn draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+    use DrawStatus::*;
+
+    let bitmap_ptr = rdi as *const u8;
+
+    let rsi_bytes = rsi.to_le_bytes();
+    let x = rsi_bytes[6] as u16 | ((rsi_bytes[7] as u16) << 8);
+    let y = rsi_bytes[4] as u16 | ((rsi_bytes[5] as u16) << 8);
+    let color = rsi_bytes[2] as u16 | ((rsi_bytes[3] as u16) << 8);
+    let width = rsi_bytes[1] as u8;
+    let height = rsi_bytes[0] as u8;
+
+    let scale = (rdx & 0xFF) as u8;
 
     let bitmap = unsafe { slice::from_raw_parts(bitmap_ptr, width as usize * height as usize) };
-
-    // the bitmap must have `height` segments of `width` values
-    if width as usize * height as usize != bitmap.len() {
-        return InvalidLength
-    }
 
     let (x_max, y_max) = vga::get_dimensions();
 
@@ -35,22 +41,43 @@ pub fn draw_bitmap(bitmap_ptr: *const u8, x: u16, y: u16, color: u16, width: u8,
     Success
 }
 
-pub fn draw_string(text_ptr: *const u8, length: u64, x: u16, y: u16, color: u16, scale: u8) -> Result<(), FromUtf8Error> {
+pub fn draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+    use DrawStatus::*;
+
+    let text_ptr = rdi as *const u8;
+    let length = rsi;
+
+    let rdx_bytes = rdx.to_le_bytes();
+    let x = rdx_bytes[6] as u16 | ((rdx_bytes[7] as u16) << 8);
+    let y = rdx_bytes[4] as u16 | ((rdx_bytes[5] as u16) << 8);
+    let color = rdx_bytes[2] as u16 | ((rdx_bytes[3] as u16) << 8);
+    let scale = (rdx & 0xFF) as u8;
+
     let text_bytes = unsafe { slice::from_raw_parts(text_ptr , length as usize) };
-    let text = String::from_utf8(text_bytes.to_vec())?;
+    let Ok(text) = String::from_utf8(text_bytes.to_vec()) else {
+        return InvalidUtf8
+    };
     
     serial_println!("{}", text);
     
     vga::put_str(x as usize, y as usize, scale as usize, &text, color);
 
-    Ok(())
+    Success
 }
 
-pub fn print(text_ptr: *const u8, length: u64) -> Result<(), FromUtf8Error> {
+pub fn print(rdi: u64, rsi: u64, _: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+    use DrawStatus::*;
+
+    let text_ptr = rdi as *const u8;
+    let length = rsi;
+
     let text_bytes = unsafe { slice::from_raw_parts(text_ptr , length as usize) };
-    let text = String::from_utf8(text_bytes.to_vec())?;
+    let Ok(text) = String::from_utf8(text_bytes.to_vec()) else {
+        return InvalidUtf8
+    };
 
-    tty::TTY1.lock().write_str(&text);
+    // tty::TTY1.lock().write_str(&text);
+    print!("{}", &text);
 
-    Ok(())
+    Success
 }
