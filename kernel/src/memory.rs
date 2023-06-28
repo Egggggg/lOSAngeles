@@ -1,5 +1,6 @@
 use core::{fmt::Debug};
 
+use alloc::{sync::Arc, vec::Vec, boxed::Box};
 use lazy_static::lazy_static;
 use limine::{
     LimineMemmapRequest, 
@@ -10,6 +11,7 @@ use limine::{
     LimineKernelAddressResponse,
     LimineKernelAddressRequest, LimineHhdmResponse
 };
+use spin::Mutex;
 use x86_64::{
     VirtAddr,
     structures::{
@@ -40,6 +42,7 @@ use crate::{allocator, serial_println};
 const FRAME_SIZE: usize = 4096;
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 pub const HARDWARE_IST_INDEX: u16 = 1;
+pub const PAGE_FAULT_IST_INDEX: u16 = 2;
 
 lazy_static! {
     pub static ref KERNEL_OFFSET: &'static LimineKernelAddressResponse = {
@@ -73,6 +76,15 @@ lazy_static! {
             let stack_end = stack_start + STACK_SIZE;
             stack_end
         };
+
+        tss.interrupt_stack_table[PAGE_FAULT_IST_INDEX as usize] = {
+            const STACK_SIZE: usize = 4096 * 5;
+            static mut STACK: [u8; STACK_SIZE] = [0; STACK_SIZE];
+
+            let stack_start = VirtAddr::from_ptr(unsafe { &STACK });
+            let stack_end = stack_start + STACK_SIZE;
+            stack_end
+        };
     
         tss
     };
@@ -86,34 +98,20 @@ lazy_static! {
         gdt.add_entry(gdt::Descriptor::user_code_segment());
         gdt.add_entry(gdt::Descriptor::tss_segment(&TSS));
 
-        // let ptr = &TSS as *const _ as u64;
-
-        // let mut low = 1 << 47;
-        // // base
-        // low.set_bits(16..40, ptr.get_bits(0..24));
-        // low.set_bits(56..64, ptr.get_bits(24..32));
-        // // limit (the `-1` in needed since the bound is inclusive)
-        // low.set_bits(0..16, (size_of::<TaskStateSegment>() - 1) as u64);
-        // // type (0b1001 = available 64-bit tss)
-        // low.set_bits(40..44, 0b1001);
-
-        // let mut high = 0;
-        // high.set_bits(0..32, ptr.get_bits(32..64));
-
-        // let tss_segment = gdt::Descriptor::SystemSegment(low, high);
-
-        // serial_println!("{:#X?}", tss_segment);
-
         gdt
     };
+
+    pub static ref PHYS_ALLOCATOR: Mutex<PhysAllocator> = Mutex::new(PhysAllocator(None));
 }
 
+pub struct PhysAllocator(pub Option<PhysBumpAllocator>);
+
 /// Starts allocation of memory
-pub unsafe fn init() -> PageFrameAllocator {
+pub unsafe fn init() {
     serial_println!("Initializing memory...");
     init_gdt();
 
-    let mut frame_allocator = PageFrameAllocator::new();
+    let mut frame_allocator = BootstrapAllocator::new();
 
     // unsafe
     let mut mapper = get_mapper();
@@ -133,9 +131,9 @@ pub unsafe fn init() -> PageFrameAllocator {
 
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
-    serial_println!("Memory initialized");
+    init_phys_allocator(frame_allocator);
 
-    frame_allocator
+    serial_println!("Memory initialized");
 }
 
 #[no_mangle]
@@ -154,6 +152,12 @@ unsafe fn init_gdt() {
     serial_println!("   {:p}", tss_ptr);
     serial_println!("{:#018X?}", table);
     serial_println!("GDT loaded");
+}
+
+unsafe fn init_phys_allocator(old_allocator: BootstrapAllocator) {
+    let new_allocator = PhysBumpAllocator::new(old_allocator);
+
+    PHYS_ALLOCATOR.lock().0 = Some(new_allocator);
 }
 
 /// Returns the currently active level 4 page table
@@ -185,7 +189,9 @@ pub unsafe fn get_mapper<'a>() -> OffsetPageTable<'a> {
     OffsetPageTable::new(level_4_table, physical_memory_offset)
 }
 
-pub unsafe fn new_pml4(frame_allocator: &mut PageFrameAllocator) -> PhysFrame {
+pub unsafe fn new_pml4() -> PhysFrame {
+    let mut frame_allocator = PHYS_ALLOCATOR.lock();
+    let frame_allocator = frame_allocator.0.as_mut().unwrap();
     let frame = frame_allocator.allocate_frame().expect("Out of memory");
 
     let pml4_start = frame.start_address();
@@ -207,12 +213,25 @@ pub unsafe fn new_pml4(frame_allocator: &mut PageFrameAllocator) -> PhysFrame {
     frame
 }
 
-pub unsafe fn allocate_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlags, frame_allocator: &mut PageFrameAllocator) -> Result<(), MapToError<Size4KiB>> {
+pub unsafe fn map_page(page: Page, flags: PageTableFlags) -> Result<(), MapToError<Size4KiB>> {
+    let mut mapper = get_mapper();
+    let mut frame_allocator = PHYS_ALLOCATOR.lock();
+    let frame_allocator = frame_allocator.0.as_mut().unwrap();
+    let frame = frame_allocator.allocate_frame().ok_or(MapToError::FrameAllocationFailed)?;
+    
+    unsafe { mapper.map_to(page, frame, flags, frame_allocator)?.flush() };
+
+    Ok(())
+}
+
+pub unsafe fn map_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlags) -> Result<(), MapToError<Size4KiB>> {
     let start_page = Page::containing_address(start);
     let end_page = Page::containing_address(end);
 
     let page_range = Page::range_inclusive(start_page, end_page);
     let mut mapper = get_mapper();
+    let mut frame_allocator = PHYS_ALLOCATOR.lock();
+    let frame_allocator = frame_allocator.0.as_mut().unwrap();
 
     for page in page_range {
         let frame = frame_allocator
@@ -235,6 +254,16 @@ pub unsafe fn allocate_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlag
     Ok(())
 }
 
+pub unsafe fn map_page_other_table(page: Page, flags: PageTableFlags, cr3: PhysFrame) -> Result<(), MapToError<Size4KiB>> {
+    let mut mapper = get_mapper();
+    let mut frame_allocator = PHYS_ALLOCATOR.lock();
+    let frame_allocator = frame_allocator.0.as_mut().unwrap();
+
+    mapper.map_to_with_table_flags(page, cr3, flags, flags, frame_allocator)?.flush();
+
+    Ok(())
+}
+
 pub unsafe fn set_area_flags(start: VirtAddr, end: VirtAddr, flags: PageTableFlags) {
     let start_page: Page<Size4KiB> = Page::containing_address(start);
     let end_page = Page::containing_address(end);
@@ -247,13 +276,13 @@ pub unsafe fn set_area_flags(start: VirtAddr, end: VirtAddr, flags: PageTableFla
     }
 }
 
-/// Allocates physical frames
-pub struct PageFrameAllocator {
+/// Allocates physical frames before the kernel heap is initialized
+pub struct BootstrapAllocator {
     map: &'static [NonNullPtr<LimineMemmapEntry>],
     next: usize,
 }
 
-impl PageFrameAllocator {
+impl BootstrapAllocator {
     fn new() -> Self {
         // Request the memory map from Limine
         static MEMMAP_REQUEST: LimineMemmapRequest = LimineMemmapRequest::new(0);
@@ -276,12 +305,40 @@ impl PageFrameAllocator {
     }
 }
 
-unsafe impl FrameAllocator<Size4KiB> for PageFrameAllocator {
+unsafe impl FrameAllocator<Size4KiB> for BootstrapAllocator {
     /// Returns the next frame and moves to the next
     fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
         let frame = self.usable_frames().nth(self.next);
         self.next += 1;
 
         frame
+    }
+}
+
+pub struct PhysBumpAllocator {
+    map: Vec<PhysFrame>,
+    next: usize,
+}
+
+impl PhysBumpAllocator {
+    /// Creates a bump allocator for physical frames
+    pub fn new(mut old: BootstrapAllocator) -> Self {
+        let frames = old.usable_frames();
+        let map: Vec<PhysFrame> = frames.collect();
+
+        Self {
+            map,
+            next: old.next,
+        }
+    }
+}
+
+unsafe impl FrameAllocator<Size4KiB> for PhysBumpAllocator {
+    /// Returns the next frame and moves to the next
+    fn allocate_frame(&mut self) -> Option<PhysFrame<Size4KiB>> {
+        let frame = self.map[self.next];
+        self.next += 1;
+
+        Some(PhysFrame::containing_address(frame.start_address()))
     }
 }

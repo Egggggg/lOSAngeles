@@ -19,6 +19,23 @@ pub unsafe extern "C" fn _start() {
     draw_string("gort", 0, 0, 0xFFFF, 10);
     print(b"me when i go fucking apeshit am i right");
 
+    {
+        let addr = 0xbeef;
+        let ptr = addr as *mut u8;
+        *ptr = 5;
+    }
+
+    {
+        let addr = 0xbeef;
+        let ptr = addr as *const u8;
+        let e = *ptr;
+
+        for _ in 0..e {
+            print(b"e");
+        }
+    }
+
+
     exit();
 }
 

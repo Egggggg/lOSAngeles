@@ -2,7 +2,7 @@ use core::ptr::copy_nonoverlapping;
 
 use x86_64::{structures::paging::{PageTableFlags, FrameAllocator}, VirtAddr};
 
-use crate::{memory::{self, PageFrameAllocator}, serial_println};
+use crate::{memory::{self, BootstrapAllocator}, serial_println};
 
 const ELF_MAGIC: [u8; 4] = [0x7F, 0x45, 0x4C, 0x46];
 /// The 64-bit class
@@ -58,7 +58,7 @@ impl Endianness {
     }
 }
 
-pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator) -> Result<*const (), ElfParsingError> {
+pub unsafe fn load_elf(program: &[u8]) -> Result<*const (), ElfParsingError> {
     let magic = &program[..4];
     
     if magic != &ELF_MAGIC {
@@ -105,11 +105,10 @@ pub unsafe fn load_elf(program: &[u8], frame_allocator: &mut PageFrameAllocator)
             let start = VirtAddr::new(p_vaddr);
             let end = VirtAddr::new(p_vaddr + p_memsz);
 
-            memory::allocate_area(
+            memory::map_area(
                 start,
                 end,
-                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE,
-                frame_allocator
+                PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE
             ).unwrap();
 
             let src = program[p_offset..p_offset + p_filesz].as_ptr();

@@ -2,7 +2,7 @@ use core::arch::asm;
 
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, PageFrameAllocator}, syscall::{serial::send_serial}};
+use crate::{serial_println, println, memory::{self, BootstrapAllocator}, syscall::{serial::send_serial}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 const USER_GS: u64 = 0xFFFF_A000_0000_0100;
@@ -12,7 +12,7 @@ mod serial;
 
 
 #[no_mangle]
-pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
+pub unsafe fn init_syscalls() {
     serial_println!("Initializing syscalls");
 
     use registers::model_specific::{Efer, EferFlags};
@@ -34,19 +34,19 @@ pub unsafe fn init_syscalls(frame_allocator: &mut PageFrameAllocator) {
         SegmentSelector::new(2, PrivilegeLevel::Ring0)
     ).unwrap();
 
-    let mut mapper = memory::get_mapper();
+    let mapper = memory::get_mapper();
 
     let kernel_gs = VirtAddr::new(KERNEL_GS);
     let user_gs = VirtAddr::new(USER_GS);
     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
 
-    let frame = frame_allocator.allocate_frame().unwrap();
     let page = Page::containing_address(kernel_gs);
 
+    // we only want to map the page if it isn't already mapped
     let translation = mapper.translate_page(page);
 
     if translation.is_err() {
-        mapper.map_to(page, frame, flags, frame_allocator).unwrap().flush();
+        memory::map_page(page, flags).unwrap();
     }
 
     registers::model_specific::GsBase::write(kernel_gs);

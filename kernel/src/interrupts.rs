@@ -27,10 +27,10 @@ lazy_static! {
 
         unsafe {
             idt.double_fault.set_handler_fn(double_fault_handler).set_stack_index(memory::DOUBLE_FAULT_IST_INDEX);
+            idt.page_fault.set_handler_fn(page_fault_handler).set_stack_index(memory::PAGE_FAULT_IST_INDEX);
         }
 
         idt.breakpoint.set_handler_fn(breakpoint_handler);
-        idt.page_fault.set_handler_fn(page_fault_handler);
         idt.invalid_tss.set_handler_fn(invalid_tss_handler);
         idt.segment_not_present.set_handler_fn(segment_not_present_handler);
         idt.stack_segment_fault.set_handler_fn(stack_segment_handler);
@@ -93,6 +93,11 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     use x86_64::registers::control::Cr2;
 
     let addr = Cr2::read();
+
+    if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
+        
+    }
+
     panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}\nAddress: {addr:?}");
 }
 

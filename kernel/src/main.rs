@@ -22,7 +22,7 @@ const JEDD_COLOR: u16 = 0b11111_111111_00000;
 
 #[no_mangle]
 pub extern "C" fn _start() {
-    let mut frame_allocator = unsafe { init() };
+    unsafe { init() };
     println!("Bepis");
 
     // heehoo thats the number
@@ -42,24 +42,22 @@ pub extern "C" fn _start() {
 
     // unsafe { process::test(&mut frame_allocator); }
 
-    unsafe { process::enter_new(&mut frame_allocator) };
+    unsafe { process::enter_new() };
 
     loop {}
 }
 
 #[no_mangle]
-unsafe fn init() -> memory::PageFrameAllocator {
+unsafe fn init() {
     x86_64::instructions::interrupts::disable();
 
-    let mut frame_allocator = memory::init();
+    memory::init();
     interrupts::init();
-    syscall::init_syscalls(&mut frame_allocator);
+    syscall::init_syscalls();
 
     x86_64::instructions::interrupts::enable();
 
     serial_println!("interrupts enabled");
-
-    frame_allocator
 }
 
 #[panic_handler]

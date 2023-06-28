@@ -4,10 +4,10 @@ use x86_64::{structures::paging::{FrameAllocator, Size4KiB, mapper::MapToError, 
 
 use bump::BumpAllocator;
 
-use crate::syscall;
+use crate::serial_println;
 
 // easier if it's in the top half
-pub const HEAP_START: usize = 0xFFFF_8323_2323_0000;
+pub const HEAP_START: usize = 0x0000_2323_2323_0000;
 
  // 100 KiB
 pub const HEAP_SIZE: usize = 100 * 1024;
@@ -54,21 +54,29 @@ pub fn init_heap(
 
     let page_range = Page::range_inclusive(heap_start_page, heap_end_page);
 
-    for page in page_range {
+    serial_println!("Initializing allocator...");
+
+    for (i, page) in page_range.enumerate() {
         let frame = frame_allocator
             .allocate_frame()
             .ok_or(MapToError::FrameAllocationFailed)?;
 
-        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+        let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL;
 
         unsafe {
             mapper.map_to(page, frame, flags, frame_allocator)?.flush();
         }
+
+        serial_println!("{}", i);
     }
+
+    serial_println!("   Heap allocated");
 
     unsafe {
         ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
+
+    serial_println!("Allocator initialized");
 
     Ok(())
 }
