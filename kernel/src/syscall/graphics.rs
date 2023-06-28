@@ -11,6 +11,7 @@ pub enum DrawStatus {
     InvalidUtf8 = 30,
 }
 
+#[no_mangle]
 pub fn draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
     use DrawStatus::*;
 

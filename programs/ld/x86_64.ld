@@ -42,6 +42,12 @@ SECTIONS
     /* If you need, for example, .init_array and .fini_array, those should be placed */
     /* above this. */
     .bss : {
+        . = ALIGN(4K);
+        PROVIDE(_initial_process_heap_start = .);
+        PROVIDE(_initial_process_heap_size = 4096 * 8);
+        . += _initial_process_heap_size;
+        PROVIDE(_initial_process_heap_end = .);
+
         *(COMMON)
         *(.bss .bss.*)
     } :data

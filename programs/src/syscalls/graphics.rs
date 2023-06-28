@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+use alloc::fmt;
+
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum DrawBitmapStatus {
@@ -76,11 +78,12 @@ pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
     out
 }
 
-pub fn print(text: &[u8]) -> u64 {
-    let rdi = text.as_ptr();
-    let rsi = text.len();
+#[doc(hidden)]
+pub fn _print(args: ::core::fmt::Arguments) {
+    let output = fmt::format(args);
 
-    let out: u64;
+    let rdi = output.as_ptr();
+    let rsi = output.len();
 
     unsafe {
         asm!(
@@ -91,9 +94,22 @@ pub fn print(text: &[u8]) -> u64 {
             "mov rax, rax",
             in("rdi") rdi,
             in("rsi") rsi,
-            lateout("rax") out,
         );
     }
+}
 
-    out
+/// Prints to the host through the serial interface
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => {
+        $crate::_print(format_args!($($arg)*))
+    };
+}
+
+/// Prints to the host through the serial interface, appending a newline
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
 }

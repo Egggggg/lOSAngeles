@@ -1,4 +1,4 @@
-use core::arch::asm;
+use core::{arch::asm, fmt::Arguments, panic::Location};
 
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
@@ -125,8 +125,6 @@ pub unsafe fn syscall() {
     // loop {}
 
     asm!(
-        "mov rax, rax",
-        "mov rcx, rcx",
         "call _sysret_asm",
         in("rax") rax,
         in("rcx") rcx,

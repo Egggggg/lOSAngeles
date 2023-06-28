@@ -47,5 +47,10 @@ SECTIONS
     .bss : {
         *(COMMON)
         *(.bss .bss.*)
+        
+        . = ALIGN(4K);
+        PROVIDE(_initial_kernel_heap_start = .);
+        PROVIDE(_initial_kernel_heap_size = 4096 * 1024);
+        . += _initial_kernel_heap_size;
     } :data
 }

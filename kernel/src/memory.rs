@@ -129,7 +129,7 @@ pub unsafe fn init() {
         }
     }
 
-    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    allocator::init_heap();
 
     init_phys_allocator(frame_allocator);
 

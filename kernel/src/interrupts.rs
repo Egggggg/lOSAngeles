@@ -1,15 +1,15 @@
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use x86_64::{
-    structures::idt::{
+    structures::{idt::{
         InterruptDescriptorTable,
         InterruptStackFrame,
         PageFaultErrorCode
-    },
+    }, paging::{Page, PageTableFlags}},
     instructions::port::Port,
 };
 
-use crate::{serial_print, serial_println, memory};
+use crate::{serial_print, serial_println, memory, serial::SERIAL1};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -60,7 +60,7 @@ pub unsafe  fn init() {
 
     // Limine starts the kernel with all IRQs masked
     // we only want to unmask the timer and keyboard for now (bits 0 and 1)
-    pics.write_masks(0xFC, 0xFF);
+    pics.write_masks(0xFD, 0xFF);
 
     serial_println!("Interrupts initialized");
 
@@ -94,8 +94,20 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
     let addr = Cr2::read();
 
+    unsafe { SERIAL1.force_unlock() };
+
+    serial_println!("page fault for addr {:#018X}", addr);
+
     if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
-        
+        serial_println!("Allocating page...");
+
+        let page = Page::containing_address(addr);
+        let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
+
+        unsafe { memory::map_page(page, flags).unwrap() };
+
+        serial_println!("Page allocated");
+        return;
     }
 
     panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}\nAddress: {addr:?}");
