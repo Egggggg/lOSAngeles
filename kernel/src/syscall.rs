@@ -80,9 +80,9 @@ pub unsafe fn syscall() {
     let sp: u64;
 
     asm!(
-        "swapgs",
-        "mov {sp}, gs:0",
-        "swapgs",
+        "swapgs", // swap to user gs so we can get the user stack
+        "mov {sp}, gs:0", // get the user stack
+        "swapgs", // swap back to kernel gs
         out("rax") number,
         out("rcx") rcx,
         out("rdi") rdi,
@@ -94,13 +94,13 @@ pub unsafe fn syscall() {
     );
 
     serial_println!("Welcome to syscall");
-    // println!("Syscall number {:#06X}", number);
-    // println!("Syscall arg 1: {:#018X}", rdi);
-    // println!("Syscall arg 2: {:#018X}", rsi);
-    // println!("Syscall arg 3: {:#018X}", rdx);
-    // println!("Syscall arg 4: {:#018X}", r8);
-    // println!("Syscall arg 5: {:#018X}", r9);
-    // println!("Syscall arg 6: {:#018X} (stack)", sp);
+    serial_println!("Syscall number {:#06X}", number);
+    serial_println!("Syscall arg 1: {:#018X}", rdi);
+    serial_println!("Syscall arg 2: {:#018X}", rsi);
+    serial_println!("Syscall arg 3: {:#018X}", rdx);
+    serial_println!("Syscall arg 4: {:#018X}", r8);
+    serial_println!("Syscall arg 5: {:#018X}", r9);
+    serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
 
     let rax = match number {
         0x00 => {
