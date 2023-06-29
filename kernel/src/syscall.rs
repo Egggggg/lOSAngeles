@@ -38,7 +38,7 @@ pub unsafe fn init_syscalls() {
 
     let kernel_gs = VirtAddr::new(KERNEL_GS);
     let user_gs = VirtAddr::new(USER_GS);
-    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
+    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::GLOBAL;
 
     let page = Page::containing_address(kernel_gs);
 
@@ -93,14 +93,14 @@ pub unsafe fn syscall() {
         sp = out(reg) sp,
     );
 
-    serial_println!("Welcome to syscall");
-    serial_println!("Syscall number {:#06X}", number);
-    serial_println!("Syscall arg 1: {:#018X}", rdi);
-    serial_println!("Syscall arg 2: {:#018X}", rsi);
-    serial_println!("Syscall arg 3: {:#018X}", rdx);
-    serial_println!("Syscall arg 4: {:#018X}", r8);
-    serial_println!("Syscall arg 5: {:#018X}", r9);
-    serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
+    // serial_println!("Welcome to syscall");
+    // serial_println!("Syscall number {:#06X}", number);
+    // serial_println!("Syscall arg 1: {:#018X}", rdi);
+    // serial_println!("Syscall arg 2: {:#018X}", rsi);
+    // serial_println!("Syscall arg 3: {:#018X}", rdx);
+    // serial_println!("Syscall arg 4: {:#018X}", r8);
+    // serial_println!("Syscall arg 5: {:#018X}", r9);
+    // serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
 
     let rax = match number {
         0x00 => {

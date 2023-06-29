@@ -66,6 +66,7 @@ pub fn draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> Draw
     Success
 }
 
+#[no_mangle]
 pub fn print(rdi: u64, rsi: u64, _: u64, _: u64, _: u64, _: u64) -> DrawStatus {
     use DrawStatus::*;
 

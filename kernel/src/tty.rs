@@ -42,18 +42,18 @@ impl Tty {
         }
     }
 
-    pub fn write_str(&mut self, text: &str) {
+    fn _write_str(&mut self, text: &str) {
         if text.contains("\n") {
             let separated: Vec<&str> = text.split("\n").collect();
             for &line in &separated[..separated.len() - 1] {
-                self.write_str_inner(line);
+                self._write_str_inner(line);
     
                 self.newline();
             }
 
-            self.write_str(separated[separated.len() - 1]);
+            self._write_str(separated[separated.len() - 1]);
         } else {
-            self.write_str_inner(text);
+            self._write_str_inner(text);
         }
     }
 
@@ -67,7 +67,7 @@ impl Tty {
         }
     }
 
-    fn write_str_inner(&mut self, text: &str) {
+    fn _write_str_inner(&mut self, text: &str) {
         let space = self.x_max - self.x;
 
         let put_str = |text| vga::put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color);
@@ -79,7 +79,7 @@ impl Tty {
 
             put_str(start);
             self.newline();
-            self.write_str(end);
+            self._write_str(end);
         } else {
             put_str(text);
             self.x += text.len();
@@ -89,7 +89,7 @@ impl Tty {
 
 impl fmt::Write for Tty {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.write_str(s);
+        self._write_str(s);
         Ok(())
     }
 }
@@ -98,7 +98,7 @@ impl fmt::Write for Tty {
 pub fn _print(args: ::core::fmt::Arguments) {
     use fmt::Write;
     use x86_64::instructions::interrupts;
-    
+
     interrupts::without_interrupts(|| {
         serial::_print(args);
         TTY1.lock().write_fmt(args).unwrap();

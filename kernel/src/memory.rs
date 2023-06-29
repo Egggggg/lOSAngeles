@@ -1,6 +1,6 @@
 use core::{fmt::Debug};
 
-use alloc::{sync::Arc, vec::Vec, boxed::Box};
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use limine::{
     LimineMemmapRequest, 
@@ -119,7 +119,7 @@ pub unsafe fn init() {
     let pml4 = mapper.level_4_table();
 
     // preallocate the upper half so it can be allocated across all address spaces at once
-    for i in 256..512 {
+    for i in 255..512 {
         // only allocate pages that havent been allocated yet
         if !pml4[i].flags().contains(PageTableFlags::PRESENT) {
             let frame = frame_allocator.allocate_frame().expect("Out of memory");
@@ -144,13 +144,6 @@ unsafe fn init_gdt() {
     registers::segmentation::SS::set_reg(SegmentSelector::new(2, PrivilegeLevel::Ring0));
     instructions::tables::load_tss(SegmentSelector::new(5, PrivilegeLevel::Ring0));
 
-    let table = GDT.as_raw_slice();
-    let tss_addr = &TSS as *const _ as u64;
-    let tss_ptr = &TSS as *const _;
-
-    serial_println!("   {:#018X}", tss_addr);
-    serial_println!("   {:p}", tss_ptr);
-    serial_println!("{:#018X?}", table);
     serial_println!("GDT loaded");
 }
 
@@ -206,7 +199,7 @@ pub unsafe fn new_pml4() -> PhysFrame {
     let new_table = new_mapper.level_4_table();
     let old_table = old_mapper.level_4_table();
 
-    for i in 256..512 {
+    for i in 255..512 {
         new_table[i] = old_table[i].clone();
     }
 

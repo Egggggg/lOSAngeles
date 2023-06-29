@@ -38,7 +38,7 @@ pub extern "C" fn _start() {
         cool.push(i);
     };
 
-    serial_println!("cool[4] = {}", cool[4]);
+    println!("cool[4] = {}", cool[4]);
 
     // unsafe { process::test(&mut frame_allocator); }
 

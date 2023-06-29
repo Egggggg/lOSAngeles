@@ -7,7 +7,7 @@ extern crate alloc;
 use core::panic::PanicInfo;
 
 use alloc::vec::Vec;
-use programs::{exit, serial_print, draw_bitmap, DrawBitmapStatus, draw_string, print, println};
+use programs::{exit, serial_print, draw_bitmap, DrawBitmapStatus, draw_string, print, println, serial_println};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -34,8 +34,9 @@ pub unsafe extern "C" fn _start() {
         let addr = 0xdeadbeef_u64;
         let ptr = addr as *const u8;
         let e = *ptr;
+        let r = e + 10;
 
-        println!("0xdeadbeef: {}", e);
+        println!("{}", r);
     }
 
     // let mut e = Vec::with_capacity(10);
@@ -48,11 +49,12 @@ pub unsafe extern "C" fn _start() {
     //     print!("d");
     // }
 
-    exit();
+    // exit();
+    loop {}
 }
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    print!("{}", info);
+    serial_print!("{}", info);
     loop {}
 }

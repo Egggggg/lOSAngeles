@@ -18,7 +18,9 @@ lazy_static! {
         }
     
         let fb = &framebuffer_response.framebuffers()[0];
-    
+
+        serial_println!("{:p}", fb.address.as_ptr().unwrap());
+
         Framebuffer {
             address: fb.address.as_ptr().unwrap() as usize,
             width: fb.width as usize,
