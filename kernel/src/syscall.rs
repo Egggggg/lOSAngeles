@@ -5,7 +5,7 @@ use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, 
 use crate::{serial_println, println, memory::{self, BootstrapAllocator}, syscall::{serial::send_serial}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
-const USER_GS: u64 = 0xFFFF_A000_0000_0100;
+pub const USER_GS: u64 = 0xFFFF_A000_0000_1000;
 
 mod graphics;
 mod serial;
@@ -13,9 +13,9 @@ mod serial;
 
 #[no_mangle]
 pub unsafe fn init_syscalls() {
-    serial_println!("Initializing syscalls");
-
     use registers::model_specific::{Efer, EferFlags};
+
+    serial_println!("Initializing syscalls...");
     
     let mut efer_flags = Efer::read();
     efer_flags.set(EferFlags::SYSTEM_CALL_EXTENSIONS, true);

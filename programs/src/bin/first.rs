@@ -11,18 +11,18 @@ use programs::{exit, serial_print, draw_bitmap, DrawBitmapStatus, draw_string, p
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
-    // serial_print!("sick\n");
-    // serial_print!("nice\ncool\ngood\n");
+    serial_print!("sick\n");
+    serial_print!("nice\ncool\ngood\n");
 
-    // print!("nice");
+    println!("nice");
 
-    // match draw_bitmap(&[0x0F, 0xF0, 0xF0, 0x0F, 0x0F, 0xF0], 100, 100, 0b11111_000000_00000, 2, 3, 10) {
-    //     DrawBitmapStatus::InvalidLength => { serial_print!("Bitmap has an invalid length :("); },
-    //     _ => {},
-    // }
+    match draw_bitmap(&[0x0F, 0xF0, 0xF0, 0x0F, 0x0F, 0xF0], 400, 100, 0b11111_000000_00000, 2, 3, 10) {
+        DrawBitmapStatus::InvalidLength => { serial_print!("Bitmap has an invalid length :("); },
+        _ => {},
+    }
 
-    // draw_string("gort", 0, 0, 0xFFFF, 10);
-    // serial_print!("me when i go fucking apeshit am i right");
+    draw_string("gort", 300, 125, 0xFFFF, 10);
+    serial_print!("me when i go fucking apeshit am i right");
 
     {
         let addr = 0xdeadbeef_u64;
@@ -31,26 +31,29 @@ pub unsafe extern "C" fn _start() {
     }
 
     {
-        let addr = 0xdeadbeef_u64;
-        let ptr = addr as *const u8;
+        let addr = 0xdeadbeee_u64;
+        let ptr = addr as *const u16;
         let e = *ptr;
         let r = e + 10;
+
+        serial_println!("nice");
 
         println!("{}", r);
     }
 
-    // let mut e = Vec::with_capacity(10);
+    let mut e = Vec::with_capacity(10);
 
-    // for i in 0..e.capacity() {
-    //     e.push(i);
-    // }
+    for i in 0..e.capacity() {
+        e.push(i);
+    }
 
-    // for _ in 0..e[4] {
-    //     print!("d");
-    // }
+    let total: usize = e.iter().sum();
 
-    // exit();
-    loop {}
+    println!("total of e: {}", total);
+
+    print!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ncleared");
+
+    exit();
 }
 
 #[panic_handler]

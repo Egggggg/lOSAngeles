@@ -1,6 +1,6 @@
 use core::{fmt::Debug};
 
-use alloc::vec::Vec;
+use alloc::{vec::Vec, boxed::Box};
 use lazy_static::lazy_static;
 use limine::{
     LimineMemmapRequest, 
@@ -20,7 +20,7 @@ use x86_64::{
             PhysFrame,
             FrameAllocator,
             Size4KiB,
-            OffsetPageTable, PageTableFlags, page_table::PageTableEntry, Page, mapper::MapToError, Mapper
+            OffsetPageTable, PageTableFlags, page_table::PageTableEntry, Page, mapper::MapToError, Mapper, PageSize, Size2MiB, Size1GiB
         }, 
         gdt::{
             self,
@@ -245,28 +245,6 @@ pub unsafe fn map_area(start: VirtAddr, end: VirtAddr, flags: PageTableFlags) ->
     }
 
     Ok(())
-}
-
-pub unsafe fn map_page_other_table(page: Page, flags: PageTableFlags, cr3: PhysFrame) -> Result<(), MapToError<Size4KiB>> {
-    let mut mapper = get_mapper();
-    let mut frame_allocator = PHYS_ALLOCATOR.lock();
-    let frame_allocator = frame_allocator.0.as_mut().unwrap();
-
-    mapper.map_to_with_table_flags(page, cr3, flags, flags, frame_allocator)?.flush();
-
-    Ok(())
-}
-
-pub unsafe fn set_area_flags(start: VirtAddr, end: VirtAddr, flags: PageTableFlags) {
-    let start_page: Page<Size4KiB> = Page::containing_address(start);
-    let end_page = Page::containing_address(end);
-
-    let page_range = Page::range_inclusive(start_page, end_page);
-    let mut mapper = get_mapper();
-
-    for page in page_range {
-        mapper.update_flags(page, flags).unwrap().flush();
-    }
 }
 
 /// Allocates physical frames before the kernel heap is initialized

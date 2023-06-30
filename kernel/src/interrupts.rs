@@ -5,7 +5,7 @@ use x86_64::{
         InterruptDescriptorTable,
         InterruptStackFrame,
         PageFaultErrorCode
-    }, paging::{Page, PageTableFlags}},
+    }, paging::{Page, PageTableFlags, mapper::MapToError, Size2MiB, Size1GiB}},
     instructions::port::Port,
 };
 
@@ -100,6 +100,7 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
     if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
         serial_println!("Allocating page...");
+        serial_println!("Error: {:?}", error_code);
 
         let page = Page::containing_address(addr);
         let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
