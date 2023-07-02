@@ -81,3 +81,7 @@ Redid the way bitmaps are drawn, accidentally realized I had been squishing my c
 ## Day 18
 
 Fixed the page fault that was happening upon returning to a process (i had my syscalls go straight to a Rust function cause I thought calling it from assembly wouldnt put it on the stack which thinking back doesn't make as much sense as I thought it did)
+
+## Days 19 to 51
+
+I forgor 💀
