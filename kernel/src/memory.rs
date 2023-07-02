@@ -119,7 +119,7 @@ pub unsafe fn init() {
     let pml4 = mapper.level_4_table();
 
     // preallocate the upper half so it can be allocated across all address spaces at once
-    for i in 255..512 {
+    for i in 256..512 {
         // only allocate pages that havent been allocated yet
         if !pml4[i].flags().contains(PageTableFlags::PRESENT) {
             let frame = frame_allocator.allocate_frame().expect("Out of memory");
@@ -199,7 +199,7 @@ pub unsafe fn new_pml4() -> PhysFrame {
     let new_table = new_mapper.level_4_table();
     let old_table = old_mapper.level_4_table();
 
-    for i in 255..512 {
+    for i in 256..512 {
         new_table[i] = old_table[i].clone();
     }
 

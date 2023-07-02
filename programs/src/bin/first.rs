@@ -1,13 +1,10 @@
-#![feature(naked_functions)]
 #![no_std]
 #![no_main]
 
 extern crate alloc;
 
-use core::panic::PanicInfo;
-
 use alloc::vec::Vec;
-use programs::{exit, serial_print, draw_bitmap, DrawBitmapStatus, draw_string, print, println, serial_println};
+use programs::{exit, serial_print, draw_bitmap, DrawBitmapStatus, draw_string, print, println, serial_println, sys_yield};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -51,13 +48,5 @@ pub unsafe extern "C" fn _start() {
 
     println!("total of e: {}", total);
 
-    print!("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\ncleared");
-
     exit();
-}
-
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    serial_print!("{}", info);
-    loop {}
 }

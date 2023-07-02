@@ -42,7 +42,6 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height:
             "mov rsi, rsi",
             "mov rdx, rdx",
             "syscall",
-            "mov rax, rax",
             in("rdi") rdi,
             in("rsi") rsi,
             in("rdx") rdx,

@@ -2,10 +2,10 @@ use core::{arch::asm, fmt::Arguments, panic::Location};
 
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, BootstrapAllocator}, syscall::{serial::send_serial}};
+use crate::{serial_println, println, memory::{self, BootstrapAllocator}, syscall::{serial::send_serial}, process::{self, ReturnRegs}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
-pub const USER_GS: u64 = 0xFFFF_A000_0000_1000;
+pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
 
 mod graphics;
 mod serial;
@@ -59,10 +59,10 @@ pub unsafe fn init_syscalls() {
 #[no_mangle]
 pub unsafe extern "C" fn _syscall_asm() {
     asm!(
-        "mov gs:0, rsp",
-        "swapgs",
-        "mov rsp, gs:0",
-        "call syscall",
+        "mov gs:0, rsp", // put user stack pointer in gs:0
+        "swapgs", // switch to kernel gs
+        "mov rsp, gs:0", // put kernel stack pointer in rsp
+        "call syscall", // execute syscall function below
         options(noreturn),
     );
 }
@@ -102,31 +102,117 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 5: {:#018X}", r9);
     // serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
 
-    let rax = match number {
+    // process::SCHEDULER.write().get_current().unwrap().state.clear();
+
+    let out = match number {
         0x00 => {
-            println!("Process exited");
-            loop {}
+            sys_exit();
+        }
+        0x40 => {
+            let out = sys_getpid(rdi);
+
+            ReturnRegs {
+                rax: out.status,
+                rdi: out.pid,
+                ..Default::default()
+            }
+        }
+        0x48 => {
+            sys_yield(rcx);
         }
         0x100 => {
-            graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64
+            let status = graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
         }
         0x101 => {
-            graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64
+            let status = graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
         }
         0x102 => {
-            graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64
+            let status = graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
         }
         0x130 => {
-            serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64
+            let status = serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
         }
-        _ => 0xFF,
+        _ => ReturnRegs {
+            rax: 0xFF,
+            ..Default::default()
+        },
     };
 
-    // loop {}
+    process::prep_sysret();
+
+    serial_println!("{:?}", out);
 
     asm!(
         "call _sysret_asm",
-        in("rax") rax,
         in("rcx") rcx,
+        in("rax") out.rax,
+        in("rdi") out.rdi,
     );
+}
+
+unsafe fn sys_exit() -> ! {
+    println!("Process exited");
+    
+    {        
+        let mut scheduler = process::SCHEDULER.write();
+        scheduler.queue.pop_front();
+
+        if scheduler.queue.len() == 0 {
+            loop {}
+        }
+    }
+
+    process::schedule_next();
+}
+
+struct GetPidResponse {
+    status: u64,
+    pid: u64,
+}
+
+unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
+    let scheduler = process::SCHEDULER.read();
+    
+    if rdi == 0 {
+        let pid = scheduler.queue.get(0).unwrap().pid;
+
+        GetPidResponse {
+            status: 0,
+            pid,
+        }
+    } else {
+        GetPidResponse {
+            status: 10,
+            pid: 0,
+        }
+    }
+}
+
+unsafe fn sys_yield(rcx: *const ()) -> ! {
+    let mut scheduler = process::SCHEDULER.write();
+    let current = scheduler.get_current().unwrap();
+    current.state.rax = 0;
+    current.pc = rcx as u64;
+
+    process::schedule_next();
 }

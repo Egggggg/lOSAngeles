@@ -6,8 +6,38 @@
 //!     RAX - Status code
 //!     RDI, RSI, RDX, R8, R9, R10 - Return values, first to last
 
+use core::arch::asm;
+
 pub use serial::*;
 pub use graphics::*;
 
 mod serial;
 mod graphics;
+
+pub unsafe fn exit() {
+    asm!(
+        "mov rax, $0x00",
+        "syscall",
+    );
+}
+
+pub unsafe fn getpid() -> u64 {
+    let rdi: u64;
+
+    asm!(
+        "mov rax, $0x40",
+        "syscall",
+        lateout("rdi") rdi,
+    );
+
+    rdi
+}
+
+pub fn sys_yield() {
+    unsafe { 
+        asm!(
+            "mov rax, $0x48",
+            "syscall",
+        ); 
+    }
+}

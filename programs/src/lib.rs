@@ -6,13 +6,12 @@ mod allocator;
 
 extern crate alloc;
 
-use core::arch::asm;
+use core::panic::PanicInfo;
 
 pub use syscalls::*;
 
-pub unsafe fn exit() {
-    asm!(
-        "mov rax, $0x00",
-        "syscall",
-    );
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    serial_print!("{}", info);
+    loop {}
 }

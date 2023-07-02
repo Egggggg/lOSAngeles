@@ -7,10 +7,12 @@ echo "Building programs"
 
 cd programs
 cargo build --target x86_64-angeles.json --bin first
+cargo build --target x86_64-angeles.json --bin multi
 cd ..
 
 mkdir -p target/programs
 cp target/x86_64-angeles/debug/first.elf target/programs/first.elf
+cp target/x86_64-angeles/debug/multi.elf target/programs/multi.elf
 
 echo "Building kernel"
 

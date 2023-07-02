@@ -58,7 +58,10 @@ impl Endianness {
     }
 }
 
-pub unsafe fn load_elf(program: &[u8]) -> Result<*const (), ElfParsingError> {
+/// Parses an ELF file and loads the data into memory
+/// 
+/// Returns the entry point of the program
+pub fn load_elf(program: &[u8]) -> Result<*const (), ElfParsingError> {
     let magic = &program[..4];
     
     if magic != &ELF_MAGIC {
@@ -105,16 +108,16 @@ pub unsafe fn load_elf(program: &[u8]) -> Result<*const (), ElfParsingError> {
             let start = VirtAddr::new(p_vaddr);
             let end = VirtAddr::new(p_vaddr + p_memsz);
 
-            memory::map_area(
+            unsafe { memory::map_area(
                 start,
                 end,
                 PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE
-            ).unwrap();
+            ).unwrap() };
 
             let src = program[p_offset..p_offset + p_filesz].as_ptr();
             let dst = p_vaddr as *mut u8;
 
-            copy_nonoverlapping(src, dst, p_filesz);
+            unsafe { copy_nonoverlapping(src, dst, p_filesz) };
         }
     }
 
