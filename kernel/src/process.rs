@@ -52,6 +52,7 @@ impl Scheduler {
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
+        // let program = include_bytes!("../../target/programs/first.elf");
         let program = include_bytes!("../../target/programs/multi.elf");
         let entry = elf::load_elf(program).unwrap();
     
@@ -96,8 +97,6 @@ impl Scheduler {
 
     pub unsafe fn switch_to(&self, process: &Process) -> ! {
         Cr3::write(process.cr3, Cr3Flags::empty());
-        println!("Switching to process {}", process.pid);
-
         prep_sysret();
 
         asm!(
@@ -168,11 +167,11 @@ pub unsafe fn prep_sysret() {
 #[no_mangle]
 pub unsafe extern "C" fn _sysret_asm() {
     asm!(
-        "mov gs:0, rsp", // back up the stack pointer
+        "mov gs:0, rsp",    // back up the stack pointer
         "swapgs",   // switch to user gs
-        "mov rsp, gs:0", // load user stack
+        "mov rsp, gs:0",    // load user stack
         "mov r11, $0x200",  // set `IF` flag in `rflags` (bit 9)
-        ".byte $0x48",  // rex.w prefix to return into 64 bit mode
+        ".byte $0x48",      // rex.w prefix to return into 64 bit mode
         "sysret",   // jump into user mode
         options(noreturn)
     );

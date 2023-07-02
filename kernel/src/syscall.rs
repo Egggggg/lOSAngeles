@@ -209,10 +209,12 @@ unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
 }
 
 unsafe fn sys_yield(rcx: *const ()) -> ! {
-    let mut scheduler = process::SCHEDULER.write();
-    let current = scheduler.get_current().unwrap();
-    current.state.rax = 0;
-    current.pc = rcx as u64;
+    {
+        let mut scheduler = process::SCHEDULER.write();
+        let current = scheduler.get_current().unwrap();
+        current.state.rax = 0;
+        current.pc = rcx as u64;
+    }
 
     process::schedule_next();
 }
