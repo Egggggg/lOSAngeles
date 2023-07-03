@@ -45,12 +45,12 @@ SECTIONS
     /* If you need, for example, .init_array and .fini_array, those should be placed */
     /* above this. */
     .bss : {
-        *(COMMON)
-        *(.bss .bss.*)
-        
         . = ALIGN(4K);
         PROVIDE(_initial_kernel_heap_start = .);
         PROVIDE(_initial_kernel_heap_size = 4096 * 1024);
         . += _initial_kernel_heap_size;
+
+        *(COMMON)
+        *(.bss .bss.*)
     } :data
 }

@@ -18,6 +18,8 @@ use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
 
+use crate::process::Program;
+
 const JEDD_COLOR: u16 = 0b11111_111111_00000;
 
 #[no_mangle]
@@ -46,12 +48,12 @@ pub extern "C" fn _start() {
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
         // add 2 of them to test multitasking
-        scheduler.add_new();
-        scheduler.add_new();
+        scheduler.add_new(Program::Multi);
+        scheduler.add_new(Program::Multi);
     }
     
 
-    process::schedule_next();
+    process::run_next();
 }
 
 #[no_mangle]

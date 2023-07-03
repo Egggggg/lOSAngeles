@@ -183,6 +183,8 @@ pub unsafe fn get_mapper<'a>() -> OffsetPageTable<'a> {
 }
 
 pub unsafe fn new_pml4() -> PhysFrame {
+    serial_println!("[---- NEW PML4 ----]");
+
     let mut frame_allocator = PHYS_ALLOCATOR.lock();
     let frame_allocator = frame_allocator.0.as_mut().unwrap();
     let frame = frame_allocator.allocate_frame().expect("Out of memory");

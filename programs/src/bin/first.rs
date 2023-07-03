@@ -48,5 +48,12 @@ pub unsafe extern "C" fn _start() {
 
     println!("total of e: {}", total);
 
+    for x in 0..16 {
+        for y in 0..16 {
+            draw_bitmap(&[0x80], x * 32, y * 32, 0b11111_111111_00000, 1, 1, 24);
+            sys_yield();
+        }
+    }
+
     exit();
 }

@@ -1,8 +1,8 @@
-use core::{arch::asm, fmt::Arguments, panic::Location};
+use core::{arch::asm};
 
-use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, FrameAllocator}, gdt::SegmentSelector}, PrivilegeLevel};
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory::{self, BootstrapAllocator}, syscall::{serial::send_serial}, process::{self, ReturnRegs}};
+use crate::{serial_println, println, memory, process::{self, ReturnRegs}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -52,6 +52,10 @@ pub unsafe fn init_syscalls() {
     registers::model_specific::GsBase::write(kernel_gs);
     registers::model_specific::KernelGsBase::write(user_gs);
 
+    asm!(
+        "mov gs:0, rsp",
+    );
+
     serial_println!("Syscalls initialized")
 }
 
@@ -59,9 +63,9 @@ pub unsafe fn init_syscalls() {
 #[no_mangle]
 pub unsafe extern "C" fn _syscall_asm() {
     asm!(
-        "mov gs:0, rsp", // put user stack pointer in gs:0
+        "mov gs:0, rsp", // save user stack
         "swapgs", // switch to kernel gs
-        "mov rsp, gs:0", // put kernel stack pointer in rsp
+        "mov rsp, gs:0", // load kernel stack
         "call syscall", // execute syscall function below
         options(noreturn),
     );
@@ -109,6 +113,7 @@ pub unsafe fn syscall() {
             sys_exit();
         }
         0x40 => {
+            serial_println!("getpid");
             let out = sys_getpid(rdi);
 
             ReturnRegs {
@@ -118,9 +123,11 @@ pub unsafe fn syscall() {
             }
         }
         0x48 => {
+            serial_println!("yield");
             sys_yield(rcx);
         }
         0x100 => {
+            serial_println!("draw_bitmap");
             let status = graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -129,6 +136,7 @@ pub unsafe fn syscall() {
             }
         }
         0x101 => {
+            serial_println!("draw_string");
             let status = graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -137,6 +145,7 @@ pub unsafe fn syscall() {
             }
         }
         0x102 => {
+            serial_println!("print");
             let status = graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -145,6 +154,7 @@ pub unsafe fn syscall() {
             }
         }
         0x130 => {
+            serial_println!("send_serial");
             let status = serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -157,6 +167,8 @@ pub unsafe fn syscall() {
             ..Default::default()
         },
     };
+
+    // sys_yield(rcx);
 
     process::prep_sysret();
 
@@ -182,7 +194,7 @@ unsafe fn sys_exit() -> ! {
         }
     }
 
-    process::schedule_next();
+    process::run_next();
 }
 
 struct GetPidResponse {
@@ -216,5 +228,5 @@ unsafe fn sys_yield(rcx: *const ()) -> ! {
         current.pc = rcx as u64;
     }
 
-    process::schedule_next();
+    process::run_next();
 }

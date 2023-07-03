@@ -5,11 +5,12 @@ use lazy_static::lazy_static;
 use spin::RwLock;
 use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}};
 
-use crate::{memory, syscall, println};
+use crate::{memory, syscall, println, serial_println};
 
 mod elf;
 
 const STACK: u64 = 0x6800_0000_0000;
+const STACK_SIZE: u64 = 4096 * 5;
 
 lazy_static! {
     pub static ref SCHEDULER: RwLock<Scheduler> = {
@@ -40,34 +41,48 @@ pub struct ReturnRegs {
     pub r9: u64,
 }
 
+/// Temporary
+pub enum Program {
+    First,
+    Multi,
+}
+
 impl Scheduler {
-    pub unsafe fn add_new(&mut self) {
+    pub unsafe fn add_new(&mut self, program: Program) {
         let old_cr3 = Cr3::read();
 
         // create a new address space with the higher half mapped the same as the current address space
         let new_cr3 = memory::new_pml4();
 
-        println!("New CR3: {:#018X}", new_cr3.start_address());
+        serial_println!("New CR3: {:#018X}", new_cr3.start_address());
 
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
-        // let program = include_bytes!("../../target/programs/first.elf");
-        let program = include_bytes!("../../target/programs/multi.elf");
-        let entry = elf::load_elf(program).unwrap();
+        let entry = match program {
+            Program::First => {
+                let contents = include_bytes!("../../target/programs/first.elf");
+                elf::load_elf(contents).unwrap()
+            }
+            Program::Multi => {
+                let contents = include_bytes!("../../target/programs/multi.elf");
+                elf::load_elf(contents).unwrap()
+            }
+        };
+
     
-        let stack_page: Page<Size4KiB> = Page::from_start_address(VirtAddr::new(STACK)).unwrap();
+        // let stack_start: Page<Size4KiB> = Page::from_start_address(VirtAddr::new(STACK)).unwrap();
+        // let stack_end: Page<Size4KiB> = Page::containing_address(VirtAddr::new(STACK + STACK_SIZE - 1);
+        let stack_start = VirtAddr::new(STACK);
+        let stack_end = VirtAddr::new(STACK + STACK_SIZE - 64);
         let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
     
-        memory::map_page(stack_page, flags).unwrap();
+        memory::map_area(stack_start, stack_end, flags).unwrap();
     
-        let rsp: *const () = (stack_page.start_address() + stack_page.size() - 64_u64).as_ptr();
-        
+        let rsp: *const () = stack_end.as_ptr();
         let user_gs = VirtAddr::new(syscall::USER_GS);
         let gs_page: Page<Size4KiB> = Page::containing_address(user_gs);
         let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-    
-        println!("gs start: {:#018X}", user_gs);
 
         memory::map_page(gs_page, flags).unwrap();
         
@@ -92,23 +107,7 @@ impl Scheduler {
         self.queue.push_back(new_process);
         Cr3::write(old_cr3.0, old_cr3.1);
 
-        println!("New process with PID {}", pid);
-    }
-
-    pub unsafe fn switch_to(&self, process: &Process) -> ! {
-        Cr3::write(process.cr3, Cr3Flags::empty());
-        prep_sysret();
-
-        asm!(
-            "call _sysret_asm",
-            in("rcx") process.pc,
-            in("rax") process.state.rax,
-            in("rdi") process.state.rdi,
-            in("rsi") process.state.rsi,
-            in("r8") process.state.r8,
-            in("r9") process.state.r9,
-            options(noreturn)
-        );
+        serial_println!("New process with PID {}", pid);
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
@@ -141,13 +140,34 @@ impl ReturnRegs {
     }
 }
 
-pub fn schedule_next() -> ! {
+pub fn run_next() -> ! {
     unsafe {
         let mut scheduler = SCHEDULER.write();
         scheduler.next();
     }
 
-    unsafe { SCHEDULER.read().switch_to(SCHEDULER.read().queue.get(0).unwrap()) };
+    let (cr3, pc, state) = {
+        let process = SCHEDULER.read();
+        let process = process.queue.get(0).unwrap();
+        (process.cr3, process.pc, process.state)
+    };
+
+    unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
+
+    serial_println!("pc: {:#018X}", pc);
+
+    unsafe {
+        asm!(
+            "call _sysret_asm",
+            in("rcx") pc,
+            in("rax") state.rax,
+            in("rdi") state.rdi,
+            in("rsi") state.rsi,
+            in("r8") state.r8,
+            in("r9") state.r9,
+            options(noreturn)
+        );
+    }
 }
 
 /// This function removes all readers and writers from the SCHEDULER RwLock
@@ -167,7 +187,7 @@ pub unsafe fn prep_sysret() {
 #[no_mangle]
 pub unsafe extern "C" fn _sysret_asm() {
     asm!(
-        "mov gs:0, rsp",    // back up the stack pointer
+        // "mov gs:0, rsp",    // back up the stack pointer
         "swapgs",   // switch to user gs
         "mov rsp, gs:0",    // load user stack
         "mov r11, $0x200",  // set `IF` flag in `rflags` (bit 9)
