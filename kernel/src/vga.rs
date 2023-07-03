@@ -52,6 +52,7 @@ pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16) {
 /// `width` is the width in bytes, _not_ pixels
 /// `size` scales linearly in both directions
 pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, height: usize, scale: usize) {
+    // TODO: Use the place of the rightmost 1 bit instead of width
     if x + width * 8 * scale >= FB.width as usize {
         panic!("Too far right");
     }

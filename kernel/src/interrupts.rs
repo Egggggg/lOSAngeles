@@ -93,25 +93,25 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     use x86_64::registers::control::Cr2;
 
     let addr = Cr2::read();
-    serial_println!("page fault for addr {:#018X}", addr);
+    // serial_println!("page fault for addr {:#018X}", addr);
 
     let (cr3, _) = Cr3::read();
 
     unsafe { SERIAL1.force_unlock() };
 
-    serial_println!("pml4 @ {:#018X}", cr3.start_address());
+    // serial_println!("pml4 @ {:#018X}", cr3.start_address());
 
     // if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
     if !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
-        serial_println!("Allocating page...");
-        serial_println!("Error: {:?}", error_code);
+        // serial_println!("Allocating page...");
+        // serial_println!("Error: {:?}", error_code);
 
         let page = Page::containing_address(addr);
         let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
 
         unsafe { memory::map_page(page, flags).unwrap() };
 
-        serial_println!("Page allocated");
+        // serial_println!("Page allocated");
         return;
     }
 

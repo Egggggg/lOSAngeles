@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use spin::Mutex;
 
 // Please do not use `print!` or `println!` in the Tty methods (this should be obvious)
-use crate::{vga, serial, serial_println};
+use crate::{vga, serial};
 
 const CHAR_WIDTH: usize = 8;
 const CHAR_HEIGHT: usize = 16;

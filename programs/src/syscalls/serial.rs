@@ -1,5 +1,3 @@
-extern crate alloc;
-
 use core::arch::asm;
 
 use alloc::fmt;
@@ -13,7 +11,6 @@ pub fn _serial_print(args: ::core::fmt::Arguments) {
         asm!(
             "mov rax, $0x130",
             "syscall",
-            "mov rax, rax",
             in("rdi") output.as_ptr(),
             in("rsi") length,
         );

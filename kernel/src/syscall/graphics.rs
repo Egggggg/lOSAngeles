@@ -1,6 +1,6 @@
-use alloc::{slice, string::{String, FromUtf8Error}};
+use alloc::{slice, string::String};
 
-use crate::{vga, println, print, serial_println, tty};
+use crate::{vga, print, serial_println};
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]

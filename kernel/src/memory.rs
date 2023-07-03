@@ -1,6 +1,6 @@
 use core::{fmt::Debug};
 
-use alloc::{vec::Vec, boxed::Box};
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use limine::{
     LimineMemmapRequest, 
@@ -20,7 +20,7 @@ use x86_64::{
             PhysFrame,
             FrameAllocator,
             Size4KiB,
-            OffsetPageTable, PageTableFlags, page_table::PageTableEntry, Page, mapper::MapToError, Mapper, PageSize, Size2MiB, Size1GiB
+            OffsetPageTable, PageTableFlags, page_table::PageTableEntry, Page, mapper::MapToError, Mapper
         }, 
         gdt::{
             self,

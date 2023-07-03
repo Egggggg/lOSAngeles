@@ -82,6 +82,13 @@ Redid the way bitmaps are drawn, accidentally realized I had been squishing my c
 
 Fixed the page fault that was happening upon returning to a process (i had my syscalls go straight to a Rust function cause I thought calling it from assembly wouldnt put it on the stack which thinking back doesn't make as much sense as I thought it did)
 
-## Days 19 to 51
+## Days 19 to 53
 
 I forgor 💀
+
+## July 2
+
+Preemptive multitasking babeyyyy
+
+## July 3
+Interprocess communication

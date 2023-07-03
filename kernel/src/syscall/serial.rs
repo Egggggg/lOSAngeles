@@ -1,4 +1,4 @@
-use alloc::{slice, string::{String, FromUtf8Error}};
+use alloc::{slice, string::String};
 
 use crate::serial_print;
 

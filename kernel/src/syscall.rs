@@ -1,8 +1,7 @@
-use core::{arch::asm};
-
+use core::arch::asm;
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory, process::{self, ReturnRegs}};
+use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER}, ipc::{self, MessageState}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -106,14 +105,39 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 5: {:#018X}", r9);
     // serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
 
-    // process::SCHEDULER.write().get_current().unwrap().state.clear();
+    process::SCHEDULER.write().get_current().unwrap().reg_state.clear();
 
     let out = match number {
         0x00 => {
             sys_exit();
         }
+        0x08 => {
+            match sys_send(rdi, rsi, rdx, r8, r9) {
+                Ok(true) => ReturnRegs {
+                    rax: 0,
+                    ..Default::default()
+                },
+                Ok(false) => sys_yield(rcx),
+                Err(MessageState::InvalidRecipient) => ReturnRegs {
+                    rax: 10,
+                    ..Default::default()
+                },
+                Err(_) => unreachable!()
+            }
+        }
+        0x0A => {
+            sys_receive();
+            sys_yield(rcx);
+        }
+        0x10 => {
+            let status = sys_share_mem(rdi, rsi, rdx) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
+        }
         0x40 => {
-            serial_println!("getpid");
             let out = sys_getpid(rdi);
 
             ReturnRegs {
@@ -123,11 +147,9 @@ pub unsafe fn syscall() {
             }
         }
         0x48 => {
-            serial_println!("yield");
             sys_yield(rcx);
         }
         0x100 => {
-            serial_println!("draw_bitmap");
             let status = graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -136,7 +158,6 @@ pub unsafe fn syscall() {
             }
         }
         0x101 => {
-            serial_println!("draw_string");
             let status = graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -145,7 +166,6 @@ pub unsafe fn syscall() {
             }
         }
         0x102 => {
-            serial_println!("print");
             let status = graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -154,7 +174,6 @@ pub unsafe fn syscall() {
             }
         }
         0x130 => {
-            serial_println!("send_serial");
             let status = serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
@@ -167,12 +186,6 @@ pub unsafe fn syscall() {
             ..Default::default()
         },
     };
-
-    // sys_yield(rcx);
-
-    process::prep_sysret();
-
-    serial_println!("{:?}", out);
 
     asm!(
         "call _sysret_asm",
@@ -187,7 +200,8 @@ unsafe fn sys_exit() -> ! {
     
     {        
         let mut scheduler = process::SCHEDULER.write();
-        scheduler.queue.pop_front();
+        scheduler.queue.rotate_left(1);
+        scheduler.queue.pop();
 
         if scheduler.queue.len() == 0 {
             loop {}
@@ -200,6 +214,62 @@ unsafe fn sys_exit() -> ! {
 struct GetPidResponse {
     status: u64,
     pid: u64,
+}
+
+/// Sets a message to be sent to the process with PID `pid`
+/// 
+/// Returns true if it was sent, false if the recipient isn't ready, or Err(()) if it couldn't be sent
+unsafe fn sys_send(to: u64, data0: u64, data1: u64, data2: u64, data3: u64) -> Result<bool, MessageState> {
+    let from = {
+        let scheduler = SCHEDULER.read();
+        let current = scheduler.queue.get(0);
+
+        if let Some(process) = current {
+            process.pid
+        } else {
+            unreachable!("There has to be an active process to call `send`");
+        }
+    };
+    
+    let state = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 });
+
+    if let Some(state) = state {
+        match state {
+            MessageState::Received => Ok(true),
+            MessageState::Waiting => Ok(false),
+            e @ _=> Err(e),
+        }
+    } else {
+        Err(MessageState::InvalidRecipient)
+    }
+}
+
+unsafe fn sys_receive() {
+    let process = {
+        let scheduler = SCHEDULER.read();
+        let current = scheduler.queue.get(0);
+
+        if let Some(process) = current {
+            process.pid
+        } else {
+            unreachable!("There has to be an active process to call `send`");
+        }
+    };
+
+    ipc::receive_message(process);
+}
+
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+enum ShareMemStatus {
+    Created = 0,
+    Joined = 1,
+    UnalignedStart = 10,
+    UnalignedSize = 11,
+}
+
+unsafe fn sys_share_mem(id: u64, start: u64, size: u64) -> ShareMemStatus {
+    ShareMemStatus::Created
 }
 
 unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
@@ -224,7 +294,7 @@ unsafe fn sys_yield(rcx: *const ()) -> ! {
     {
         let mut scheduler = process::SCHEDULER.write();
         let current = scheduler.get_current().unwrap();
-        current.state.rax = 0;
+        current.reg_state.rax = 0;
         current.pc = rcx as u64;
     }
 

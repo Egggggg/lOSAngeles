@@ -1,8 +1,8 @@
 use core::ptr::copy_nonoverlapping;
 
-use x86_64::{structures::paging::{PageTableFlags, FrameAllocator}, VirtAddr};
+use x86_64::{structures::paging::PageTableFlags, VirtAddr};
 
-use crate::{memory::{self, BootstrapAllocator}, serial_println};
+use crate::memory;
 
 const ELF_MAGIC: [u8; 4] = [0x7F, 0x45, 0x4C, 0x46];
 /// The 64-bit class

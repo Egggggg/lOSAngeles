@@ -1,8 +1,6 @@
 use core::{alloc::GlobalAlloc, ptr};
 
 use spin::Mutex;
-use x86_64::{structures::paging::{FrameAllocator, Size4KiB, mapper::MapToError, Mapper, Page, PageTableFlags}, VirtAddr};
-
 
 use crate::serial_println;
 
@@ -62,22 +60,6 @@ unsafe impl GlobalAlloc for Allocator {
         if bump.allocations == 0 {
             bump.next = bump.heap_start;
         }
-    }
-}
-
-pub struct Locked<T> {
-    inner: spin::Mutex<T>,
-}
-
-impl<T> Locked<T> {
-    pub const fn new(inner: T) -> Self {
-        Locked {
-            inner: spin::Mutex::new(inner),
-        }
-    }
-
-    pub fn lock(&self) -> spin::MutexGuard<T> {
-        self.inner.lock()
     }
 }
 

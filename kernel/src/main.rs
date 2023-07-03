@@ -11,6 +11,7 @@ mod devices;
 mod syscall;
 mod process;
 mod tty;
+mod ipc;
 
 extern crate alloc;
 
@@ -44,14 +45,13 @@ pub extern "C" fn _start() {
 
     // unsafe { process::test(&mut frame_allocator); }
 
-
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
-        // add 2 of them to test multitasking
-        scheduler.add_new(Program::Multi);
-        scheduler.add_new(Program::Multi);
+        
+        scheduler.add_new(Program::Ipc);
+        scheduler.add_new(Program::Ipc);
+        scheduler.next();
     }
-    
 
     process::run_next();
 }

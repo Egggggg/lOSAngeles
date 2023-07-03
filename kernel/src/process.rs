@@ -1,11 +1,11 @@
 use core::{arch::asm, sync::atomic::{AtomicU64, Ordering}};
 
-use alloc::collections::VecDeque;
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::RwLock;
 use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}};
 
-use crate::{memory, syscall, println, serial_println};
+use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self}};
 
 mod elf;
 
@@ -14,14 +14,14 @@ const STACK_SIZE: u64 = 4096 * 5;
 
 lazy_static! {
     pub static ref SCHEDULER: RwLock<Scheduler> = {
-        RwLock::new(Scheduler { queue: VecDeque::new(), next_pid: AtomicU64::new(1) })
+        RwLock::new(Scheduler { queue: Vec::new(), next_pid: AtomicU64::new(1) })
     };
 }
 
-type Pid = u64;
+pub type Pid = u64;
 
 pub struct Scheduler {
-    pub queue: VecDeque<Process>,
+    pub queue: Vec<Process>,
     pub next_pid: AtomicU64,
 }
 
@@ -29,7 +29,9 @@ pub struct Process {
     pub pid: Pid,
     pub cr3: PhysFrame,
     pub pc: u64,
-    pub state: ReturnRegs,
+    pub reg_state: ReturnRegs,
+    pub exec_state: ExecState,
+    pub message_handler: MessageHandler,
 }
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -37,14 +39,24 @@ pub struct ReturnRegs {
     pub rax: u64,
     pub rdi: u64,
     pub rsi: u64,
+    pub rdx: u64,
     pub r8: u64,
     pub r9: u64,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum ExecState {
+    NotStarted,
+    Running,
+    WaitingIpc,
+}
+
 /// Temporary
+#[derive(Clone, Copy, Debug)]
 pub enum Program {
     First,
     Multi,
+    Ipc,
 }
 
 impl Scheduler {
@@ -66,6 +78,10 @@ impl Scheduler {
             }
             Program::Multi => {
                 let contents = include_bytes!("../../target/programs/multi.elf");
+                elf::load_elf(contents).unwrap()
+            }
+            Program::Ipc => {
+                let contents = include_bytes!("../../target/programs/ipc.elf");
                 elf::load_elf(contents).unwrap()
             }
         };
@@ -100,19 +116,42 @@ impl Scheduler {
             pid,
             cr3: new_cr3,
             pc: entry as u64,
-            state: ReturnRegs::new(),
+            reg_state: ReturnRegs::new(),
+            exec_state: ExecState::NotStarted,
+            message_handler: MessageHandler::new(),
         };
 
         self.next_pid.store(pid + 1, Ordering::Relaxed);
-        self.queue.push_back(new_process);
+        self.queue.push(new_process);
         Cr3::write(old_cr3.0, old_cr3.1);
 
         serial_println!("New process with PID {}", pid);
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
-        self.queue.rotate_left(1);
-        self.queue.get(0)
+        if self.queue.len() == 1 {
+            return self.queue.get(0);
+        }
+
+        let index = self.queue.iter_mut().skip(1).position(|mut p| match p.exec_state {
+            ExecState::WaitingIpc => {
+                let status = ipc::refresh(&mut p);
+
+                if status {
+                    p.exec_state = ExecState::Running;
+                }
+
+                status
+            }
+            _ => true,
+        });
+
+        if let Some(i) = index {
+            self.queue.rotate_left(i + 1);
+            self.queue.get(0)
+        } else {
+            panic!("Deadlock");
+        }
     }
 
     pub unsafe fn get_current(&mut self) -> Option<&mut Process> {
@@ -126,6 +165,7 @@ impl ReturnRegs {
             rax: 0,
             rdi: 0,
             rsi: 0,
+            rdx: 0,
             r8: 0,
             r9: 0,
         }
@@ -149,12 +189,10 @@ pub fn run_next() -> ! {
     let (cr3, pc, state) = {
         let process = SCHEDULER.read();
         let process = process.queue.get(0).unwrap();
-        (process.cr3, process.pc, process.state)
+        (process.cr3, process.pc, process.reg_state)
     };
 
     unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
-
-    serial_println!("pc: {:#018X}", pc);
 
     unsafe {
         asm!(
@@ -167,19 +205,6 @@ pub fn run_next() -> ! {
             in("r9") state.r9,
             options(noreturn)
         );
-    }
-}
-
-/// This function removes all readers and writers from the SCHEDULER RwLock
-///
-/// This is done to allow scheduler interfacing after returning from user mode
-pub unsafe fn prep_sysret() {
-    while SCHEDULER.reader_count() > 0 {
-        SCHEDULER.force_read_decrement()
-    }
-
-    if SCHEDULER.writer_count() == 1 {
-        SCHEDULER.force_write_unlock();
     }
 }
 
