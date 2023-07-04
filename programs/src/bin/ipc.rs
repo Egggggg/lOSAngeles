@@ -20,7 +20,7 @@ pub unsafe extern "C" fn _start() {
         let mut counter = u64::MAX;
         loop {
             _send(2, 1, counter);
-            _receive(2, &[0]);
+            _receive(2, &[1]);
             counter -= 1;
         }
     }

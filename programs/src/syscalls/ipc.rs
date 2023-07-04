@@ -1,6 +1,6 @@
 use core::arch::asm;
 
-use crate::{align_down, serial_println};
+use crate::{align_down, serial_println, println};
 
 pub type Pid = u64;
 
@@ -90,6 +90,8 @@ pub fn receive(whitelist: &[Pid]) -> (ReceiveStatus, Message) {
         );
     }
 
+    println!("data1: {}", data1);
+
     let status = status.into();
     let message = Message { pid, data0, data1, data2, data3 };
 
@@ -116,7 +118,7 @@ impl From<u64> for CreateShareStatus {
             12 => Self::AlreadyExists,
             13 => Self::OutOfBounds,
             14 => Self::NotMapped,
-            _ => panic!("Invalid CreateShareStatus number"),
+            n => panic!("Invalid CreateShareStatus number ({})", n),
         }
     }
 }
@@ -149,7 +151,7 @@ impl From<u64> for JoinShareStatus {
             16 => Self::NotExists,
             17 => Self::NotAllowed,
             18 => Self::AlreadyMapped,
-            _ => panic!("Invalid JoinShareStatus number"),
+            n => panic!("Invalid JoinShareStatus number ({})", n),
         }
     }
 }
@@ -178,7 +180,7 @@ pub fn create_memshare(id: u64, start: u64, end: u64, whitelist: &[Pid]) -> Crea
     status.into()
 }
 
-pub fn join_memshare(id: u64, start: u64, end: u64, blacklist: &[Pid]) -> CreateShareStatus {
+pub fn join_memshare(id: u64, start: u64, end: u64, blacklist: &[Pid]) -> JoinShareStatus {
     let start = align_down(start as usize, 4096);
     let end = align_down(end as usize, 4096);
 

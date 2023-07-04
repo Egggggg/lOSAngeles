@@ -1,6 +1,6 @@
 use core::arch::asm;
 use alloc::slice;
-use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, Size4KiB}, gdt::SegmentSelector}, PrivilegeLevel};
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, Size4KiB, PhysFrame}, gdt::SegmentSelector}, PrivilegeLevel};
 
 use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER}, ipc::{self, MessageState, CreateShareError, JoinShareError}};
 
@@ -234,8 +234,9 @@ struct GetPidResponse {
 /// Returns true if it was sent, false if the recipient isn't ready, or Err(()) if it couldn't be sent
 unsafe fn sys_send(to: u64, data0: u64, data1: u64, data2: u64, data3: u64) -> Result<bool, MessageState> {
     let from = SCHEDULER.read().queue.get(0).unwrap().pid;
+    let scheduler = &mut SCHEDULER.write();
 
-    if let Some(state) = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 }) {
+    if let Some(state) = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 }, scheduler) {
         match state {
             MessageState::Received => Ok(true),
             MessageState::Waiting => Ok(false),
@@ -263,7 +264,6 @@ enum CreateShareStatus {
     UnalignedEnd = 11,
     AlreadyExists = 12,
     OutOfBounds = 13,
-    NotMapped = 14,
 }
 
 impl From<CreateShareError> for CreateShareStatus {
@@ -271,7 +271,6 @@ impl From<CreateShareError> for CreateShareStatus {
         match value {
             CreateShareError::AlreadyExists => Self::AlreadyExists,
             CreateShareError::OutOfBounds => Self::OutOfBounds,
-            CreateShareError::NotMapped => Self::NotMapped,
         }
     }
 }
@@ -319,6 +318,8 @@ unsafe fn sys_create_memshare(id: u64, start: u64, end: u64, whitelist_start: u6
     let whitelist_ptr = whitelist_start as *const u64;
     let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
 
+    serial_println!("Creating memshare");
+
     match ipc::MEMORY_SHARE.lock().create(id, start_page, end_page, pid, whitelist) {
         Ok(_) => CreateShareStatus::Success,
         Err(e) => e.into()
@@ -339,9 +340,18 @@ unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: u64,
     let blacklist_ptr = blacklist_start as *const u64;
     let blacklist = slice::from_raw_parts(blacklist_ptr, blacklist_len as usize).to_vec();
 
+    serial_println!("Joining memshare");
+
     match ipc::MEMORY_SHARE.lock().join(id, start_page, end_page, pid, blacklist) {
-        Ok(_) => JoinShareStatus::Success,
-        Err(e) => e.into()
+        Ok(_) => {
+            let mapper = memory::get_mapper();
+            let translation: PhysFrame<Size4KiB> = mapper.translate_page(Page::containing_address(VirtAddr::new(2048))).unwrap();
+
+            serial_println!("0: {:#018X?}", translation);
+
+            JoinShareStatus::Success
+        },
+        Err(e) => e.into(),
     }
 }
 

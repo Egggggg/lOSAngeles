@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use spin::RwLock;
 use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}};
 
-use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self}};
+use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self, MessageHandlerState, MessageState}};
 
 mod elf;
 
@@ -72,25 +72,8 @@ impl Scheduler {
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
-        let entry = match program {
-            // Program::First => {
-            //     let contents = include_bytes!("../../target/programs/first.elf");
-            //     elf::load_elf(contents).unwrap()
-            // }
-            // Program::Multi => {
-            //     let contents = include_bytes!("../../target/programs/multi.elf");
-            //     elf::load_elf(contents).unwrap()
-            // }
-            // Program::Ipc => {
-            //     let contents = include_bytes!("../../target/programs/ipc.elf");
-            //     elf::load_elf(contents).unwrap()
-            // }
-            Program::Memshare => {
-                let contents = include_bytes!("../../target/programs/memshare.elf");
-                elf::load_elf(contents).unwrap()
-            }
-        };
-
+        let contents = include_bytes!("../../target/programs/current1.elf");
+        let entry = elf::load_elf(contents).unwrap();
     
         // let stack_start: Page<Size4KiB> = Page::from_start_address(VirtAddr::new(STACK)).unwrap();
         // let stack_end: Page<Size4KiB> = Page::containing_address(VirtAddr::new(STACK + STACK_SIZE - 1);
@@ -134,29 +117,40 @@ impl Scheduler {
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
-        if self.queue.len() == 1 {
-            return self.queue.get(0);
+        serial_println!("Switching processes");
+
+        match self.queue.len() {
+            0 => loop {},
+            1 => return self.queue.get(0),
+            _ => {},
         }
 
-        let index = self.queue.iter_mut().skip(1).position(|mut p| match p.exec_state {
-            ExecState::WaitingIpc => {
-                let status = ipc::refresh(&mut p);
+        for _ in 1..self.queue.len() {
+            self.queue.rotate_left(1);
 
-                if status {
-                    p.exec_state = ExecState::Running;
+            let (exec_state, pid) = {
+                let process = self.queue.get(0).unwrap();
+                (process.exec_state, process.pid)
+            };
+
+            match exec_state {
+                ExecState::WaitingIpc => {
+                    serial_println!("This process is waiting for IPC");
+                    let status = ipc::refresh_ipc(pid, self);
+
+                    if status {
+                        self.get_current().unwrap().exec_state = ExecState::Running;
+                        return self.queue.get(0);
+                    }
+
                 }
-
-                status
+                _ => {
+                    return self.queue.get(0);
+                },
             }
-            _ => true,
-        });
-
-        if let Some(i) = index {
-            self.queue.rotate_left(i + 1);
-            self.queue.get(0)
-        } else {
-            panic!("Deadlock");
         }
+
+        panic!("Deadlock");
     }
 
     pub unsafe fn get_current(&mut self) -> Option<&mut Process> {
@@ -186,18 +180,16 @@ impl ReturnRegs {
 }
 
 pub fn run_next() -> ! {
-    unsafe {
+    let (cr3, pc, state) = unsafe {
         let mut scheduler = SCHEDULER.write();
-        scheduler.next();
-    }
-
-    let (cr3, pc, state) = {
-        let process = SCHEDULER.read();
-        let process = process.queue.get(0).unwrap();
+        let process = scheduler.next().unwrap();
         (process.cr3, process.pc, process.reg_state)
     };
 
     unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
+
+    serial_println!("cr3: {:#018X?}\n  pc: {:#018X}", cr3.start_address(), pc);
+    serial_println!("reg_state: {:#018X?}", state);
 
     unsafe {
         asm!(
@@ -206,6 +198,7 @@ pub fn run_next() -> ! {
             in("rax") state.rax,
             in("rdi") state.rdi,
             in("rsi") state.rsi,
+            in("rdx") state.rdx,
             in("r8") state.r8,
             in("r9") state.r9,
             options(noreturn)
