@@ -1,4 +1,4 @@
-#![feature(abi_x86_interrupt, naked_functions)]
+#![feature(abi_x86_interrupt, naked_functions, iterator_try_collect)]
 #![no_std]
 #![no_main]
 
@@ -48,8 +48,8 @@ pub extern "C" fn _start() {
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
         
-        scheduler.add_new(Program::Ipc);
-        scheduler.add_new(Program::Ipc);
+        scheduler.add_new(Program::Memshare);
+        scheduler.add_new(Program::Memshare);
         scheduler.next();
     }
 

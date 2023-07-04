@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use programs::{getpid, receive, ReceiveStatus, println, Message, send, SendStatus, exit};
+use programs::{getpid, receive, ReceiveStatus, println, Message, send, SendStatus, exit, Pid};
 
 extern crate alloc;
 
@@ -12,7 +12,7 @@ pub unsafe extern "C" fn _start() {
     if pid == 1 {
         let mut counter = 0;
         loop {
-            _receive(1);
+            _receive(1, &[2]);
             _send(1, 2, counter);
             counter += 1
         }
@@ -20,15 +20,15 @@ pub unsafe extern "C" fn _start() {
         let mut counter = u64::MAX;
         loop {
             _send(2, 1, counter);
-            _receive(2);
+            _receive(2, &[0]);
             counter -= 1;
         }
     }
 }
 
-unsafe fn _receive(pid: u64) {
+unsafe fn _receive(pid: Pid, whitelist: &[Pid]) {
     println!("{}: Waiting for message", pid);
-    let msg = receive();
+    let msg = receive(whitelist);
 
     match msg.0 {
         ReceiveStatus::Success => {
@@ -38,7 +38,7 @@ unsafe fn _receive(pid: u64) {
     }
 }
 
-unsafe fn _send(pid: u64, friend: u64, content: u64) {
+unsafe fn _send(pid: Pid, friend: Pid, content: u64) {
     println!("{}: Sending message", pid);
     let msg = Message {
         pid: friend,

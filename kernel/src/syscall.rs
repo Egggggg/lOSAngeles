@@ -1,7 +1,8 @@
 use core::arch::asm;
-use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
+use alloc::slice;
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, Size4KiB}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER}, ipc::{self, MessageState}};
+use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER}, ipc::{self, MessageState, CreateShareError, JoinShareError}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -122,15 +123,27 @@ pub unsafe fn syscall() {
                     rax: 10,
                     ..Default::default()
                 },
-                Err(_) => unreachable!()
+                Err(MessageState::Blocked) => ReturnRegs {
+                    rax: 10,
+                    ..Default::default()
+                },
+                e => panic!("sys_send is {:?}", e),
             }
         }
         0x0A => {
-            sys_receive();
+            sys_receive(rdi, rsi);
             sys_yield(rcx);
         }
         0x10 => {
-            let status = sys_share_mem(rdi, rsi, rdx) as u64;
+            let status = sys_create_memshare(rdi, rsi, rdx, r8, r9) as u64;
+
+            ReturnRegs {
+                rax: status,
+                ..Default::default()
+            }
+        }
+        0x11 => {
+            let status = sys_join_memshare(rdi, rsi, rdx, r8, r9) as u64;
 
             ReturnRegs {
                 rax: status,
@@ -220,20 +233,9 @@ struct GetPidResponse {
 /// 
 /// Returns true if it was sent, false if the recipient isn't ready, or Err(()) if it couldn't be sent
 unsafe fn sys_send(to: u64, data0: u64, data1: u64, data2: u64, data3: u64) -> Result<bool, MessageState> {
-    let from = {
-        let scheduler = SCHEDULER.read();
-        let current = scheduler.queue.get(0);
+    let from = SCHEDULER.read().queue.get(0).unwrap().pid;
 
-        if let Some(process) = current {
-            process.pid
-        } else {
-            unreachable!("There has to be an active process to call `send`");
-        }
-    };
-    
-    let state = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 });
-
-    if let Some(state) = state {
+    if let Some(state) = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 }) {
         match state {
             MessageState::Received => Ok(true),
             MessageState::Waiting => Ok(false),
@@ -244,32 +246,103 @@ unsafe fn sys_send(to: u64, data0: u64, data1: u64, data2: u64, data3: u64) -> R
     }
 }
 
-unsafe fn sys_receive() {
-    let process = {
-        let scheduler = SCHEDULER.read();
-        let current = scheduler.queue.get(0);
+unsafe fn sys_receive(whitelist_start: u64, whitelist_len: u64) {
+    let pid = SCHEDULER.read().queue.get(0).unwrap().pid;
 
-        if let Some(process) = current {
-            process.pid
-        } else {
-            unreachable!("There has to be an active process to call `send`");
-        }
-    };
+    let whitelist_ptr = whitelist_start as *const u64;
+    let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
 
-    ipc::receive_message(process);
+    ipc::receive_message(pid, whitelist);
 }
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
-enum ShareMemStatus {
-    Created = 0,
-    Joined = 1,
+enum CreateShareStatus {
+    Success = 0,
     UnalignedStart = 10,
-    UnalignedSize = 11,
+    UnalignedEnd = 11,
+    AlreadyExists = 12,
+    OutOfBounds = 13,
+    NotMapped = 14,
 }
 
-unsafe fn sys_share_mem(id: u64, start: u64, size: u64) -> ShareMemStatus {
-    ShareMemStatus::Created
+impl From<CreateShareError> for CreateShareStatus {
+    fn from(value: CreateShareError) -> Self {
+        match value {
+            CreateShareError::AlreadyExists => Self::AlreadyExists,
+            CreateShareError::OutOfBounds => Self::OutOfBounds,
+            CreateShareError::NotMapped => Self::NotMapped,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+enum JoinShareStatus {
+    Success = 0,
+    UnalignedStart = 10,
+    UnalignedEnd = 11,
+    BlacklistClash = 12,
+    OutOfBounds = 13,
+    TooSmall = 14,
+    TooLarge = 15,
+    NotExists = 16,
+    NotAllowed = 17,
+    AlreadyMapped = 18,
+}
+
+impl From<JoinShareError> for JoinShareStatus {
+    fn from(value: JoinShareError) -> Self {
+        match value {
+            JoinShareError::BlacklistClash => Self::BlacklistClash,
+            JoinShareError::OutOfBounds => Self::OutOfBounds,
+            JoinShareError::TooSmall => Self::TooSmall,
+            JoinShareError::TooLarge => Self::TooLarge,
+            JoinShareError::NotExists => Self::NotExists,
+            JoinShareError::NotAllowed => Self::NotAllowed,
+            JoinShareError::AlreadyMapped => Self::AlreadyMapped,
+        }
+    }
+}
+
+unsafe fn sys_create_memshare(id: u64, start: u64, end: u64, whitelist_start: u64, whitelist_len: u64) -> CreateShareStatus {
+    let Ok(start_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(start)) else {
+        return CreateShareStatus::UnalignedStart;
+    };
+
+    let Ok(end_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(end)) else {
+        return CreateShareStatus::UnalignedEnd;
+    };
+
+    let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
+
+    let whitelist_ptr = whitelist_start as *const u64;
+    let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
+
+    match ipc::MEMORY_SHARE.lock().create(id, start_page, end_page, pid, whitelist) {
+        Ok(_) => CreateShareStatus::Success,
+        Err(e) => e.into()
+    }
+}
+
+unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: u64, blacklist_len: u64) -> JoinShareStatus {
+    let Ok(start_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(start)) else {
+        return JoinShareStatus::UnalignedStart;
+    };
+
+    let Ok(end_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(end)) else {
+        return JoinShareStatus::UnalignedEnd;
+    };
+
+    let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
+
+    let blacklist_ptr = blacklist_start as *const u64;
+    let blacklist = slice::from_raw_parts(blacklist_ptr, blacklist_len as usize).to_vec();
+
+    match ipc::MEMORY_SHARE.lock().join(id, start_page, end_page, pid, blacklist) {
+        Ok(_) => JoinShareStatus::Success,
+        Err(e) => e.into()
+    }
 }
 
 unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {

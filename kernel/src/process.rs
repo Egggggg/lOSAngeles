@@ -54,9 +54,10 @@ pub enum ExecState {
 /// Temporary
 #[derive(Clone, Copy, Debug)]
 pub enum Program {
-    First,
-    Multi,
-    Ipc,
+    // First,
+    // Multi,
+    // Ipc,
+    Memshare,
 }
 
 impl Scheduler {
@@ -72,16 +73,20 @@ impl Scheduler {
         Cr3::write(new_cr3, Cr3Flags::empty());
 
         let entry = match program {
-            Program::First => {
-                let contents = include_bytes!("../../target/programs/first.elf");
-                elf::load_elf(contents).unwrap()
-            }
-            Program::Multi => {
-                let contents = include_bytes!("../../target/programs/multi.elf");
-                elf::load_elf(contents).unwrap()
-            }
-            Program::Ipc => {
-                let contents = include_bytes!("../../target/programs/ipc.elf");
+            // Program::First => {
+            //     let contents = include_bytes!("../../target/programs/first.elf");
+            //     elf::load_elf(contents).unwrap()
+            // }
+            // Program::Multi => {
+            //     let contents = include_bytes!("../../target/programs/multi.elf");
+            //     elf::load_elf(contents).unwrap()
+            // }
+            // Program::Ipc => {
+            //     let contents = include_bytes!("../../target/programs/ipc.elf");
+            //     elf::load_elf(contents).unwrap()
+            // }
+            Program::Memshare => {
+                let contents = include_bytes!("../../target/programs/memshare.elf");
                 elf::load_elf(contents).unwrap()
             }
         };

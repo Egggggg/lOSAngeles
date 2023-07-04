@@ -20,14 +20,8 @@ static ALLOCATOR: Allocator = Allocator(Mutex::new(None));
 
 /// Align the given address `addr` upwards to alignment `align`.
 fn align_up(addr: usize, align: usize) -> usize {
-    // addr     = 42  (0b_0010_1010)
-    // align    = 16  (0b_0001_0000)
-    // 16 - 1   = 15  (0b_0000_1111)
-    // !15      = 240 (0b_1111_0000)
-    // 42 + 15  = 57  (0b_0011_1001)
-    // 57 & 240 = 48  (0b_0011_0000)
-    // (i will forget why i do it like this)
-    (addr + align - 1) & !(align - 1)
+    let remainder = addr % align;
+    addr + (align - remainder)
 }
 
 unsafe impl GlobalAlloc for Allocator {

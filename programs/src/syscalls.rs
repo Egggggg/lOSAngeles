@@ -15,21 +15,25 @@ pub use serial::*;
 pub use graphics::*;
 pub use ipc::*;
 
-pub unsafe fn exit() {
-    asm!(
-        "mov rax, $0x00",
-        "syscall",
-    );
+pub fn exit() {
+    unsafe {
+        asm!(
+            "mov rax, $0x00",
+            "syscall",
+        );
+    }
 }
 
-pub unsafe fn getpid() -> u64 {
+pub fn getpid() -> u64 {
     let rdi: u64;
 
-    asm!(
-        "mov rax, $0x40",
-        "syscall",
-        lateout("rdi") rdi,
-    );
+    unsafe {
+        asm!(
+            "mov rax, $0x40",
+            "syscall",
+            lateout("rdi") rdi,
+        );
+    }
 
     rdi
 }
