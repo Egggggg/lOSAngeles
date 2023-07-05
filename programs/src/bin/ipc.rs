@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use programs::{getpid, receive, ReceiveStatus, println, Message, send, SendStatus, exit, Pid};
+use programs::{getpid, receive, println, send, Pid, ReceiveStatus, Message, SendStatus};
 
 extern crate alloc;
 
@@ -51,5 +51,6 @@ unsafe fn _send(pid: Pid, friend: Pid, content: u64) {
     match status {
         SendStatus::Success => println!("{}: Message sent to {}", pid, friend),
         SendStatus::InvalidRecipient => println!("{}: {} doesn't exist", pid, friend),
+        SendStatus::Blocked => println!("{}: Blocked by {}", pid, friend),
     }
 }

@@ -8,12 +8,16 @@
 mod serial;
 mod graphics;
 mod ipc;
+mod memshare;
+mod dev;
 
 use core::arch::asm;
 
 pub use serial::*;
 pub use graphics::*;
 pub use ipc::*;
+pub use memshare::*;
+pub use dev::*;
 
 pub fn exit() {
     unsafe {

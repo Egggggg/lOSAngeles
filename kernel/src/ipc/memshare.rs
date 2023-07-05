@@ -39,12 +39,9 @@ pub struct SharedRegion {
 }
 
 impl SharedMemory {
-    pub fn contains(&self, id: u64) -> bool {
-        self.regions.contains_key(&id)
-    }
 
     pub unsafe fn create(&mut self, id: u64, start: Page, end: Page, pid: Pid, whitelist: Vec<Pid>) -> Result<(), CreateShareError> {
-        if self.contains(id) {
+        if self.regions.contains_key(&id) {
             return Err(CreateShareError::AlreadyExists);
         }
 
@@ -86,7 +83,7 @@ impl SharedMemory {
     pub unsafe fn join(&mut self, id: u64, start: Page, end: Page, pid: Pid, blacklist: Vec<Pid>) -> Result<(), JoinShareError> {
         serial_println!("{:#018X?}", self.regions);
         
-        if !self.contains(id) {
+        if !self.regions.contains_key(&id) {
             return Err(JoinShareError::NotExists);
         }
 

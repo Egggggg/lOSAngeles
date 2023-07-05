@@ -1,34 +1,8 @@
 use core::arch::asm;
 
-use crate::{align_down, serial_println, println};
+pub use abi::ipc::{Message, SendStatus, ReceiveStatus, Pid};
 
-pub type Pid = u64;
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum SendStatus {
-    Success = 0,
-    InvalidRecipient = 10,
-}
-
-impl From<u64> for SendStatus {
-    fn from(value: u64) -> Self {
-        match value {
-            0 => Self::Success,
-            10 => Self::InvalidRecipient,
-            _ => panic!("Invalid SendStatus number"),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default)]
-pub struct Message {
-    pub pid: Pid,
-    pub data0: u64,
-    pub data1: u64,
-    pub data2: u64,
-    pub data3: u64,
-}
+use crate::align_down;
 
 /// Sends a message to another process, blocking until it is received
 pub fn send(message: Message) -> SendStatus {
@@ -48,22 +22,7 @@ pub fn send(message: Message) -> SendStatus {
         );
     }
 
-    status.into()
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum ReceiveStatus {
-    Success = 0,
-}
-
-impl From<u64> for ReceiveStatus {
-    fn from(value: u64) -> Self {
-        match value {
-            0 => Self::Success,
-            _ => panic!("Invalid ReceiveStatus number"),
-        }
-    }
+    status.try_into().unwrap()
 }
 
 /// Blocks until a message is received, then returns that message
@@ -90,114 +49,8 @@ pub fn receive(whitelist: &[Pid]) -> (ReceiveStatus, Message) {
         );
     }
 
-    println!("data1: {}", data1);
-
-    let status = status.into();
+    let status = status.try_into().unwrap();
     let message = Message { pid, data0, data1, data2, data3 };
 
     (status, message)
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum CreateShareStatus {
-    Success = 0,
-    UnalignedStart = 10,
-    UnalignedEnd = 11,
-    AlreadyExists = 12,
-    OutOfBounds = 13,
-    NotMapped = 14,
-}
-
-impl From<u64> for CreateShareStatus {
-    fn from(value: u64) -> Self {
-        match value {
-            0 => Self::Success,
-            10 => Self::UnalignedStart,
-            11 => Self::UnalignedEnd,
-            12 => Self::AlreadyExists,
-            13 => Self::OutOfBounds,
-            14 => Self::NotMapped,
-            n => panic!("Invalid CreateShareStatus number ({})", n),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum JoinShareStatus {
-    Success = 0,
-    UnalignedStart = 10,
-    UnalignedEnd = 11,
-    BlacklistClash = 12,
-    OutOfBounds = 13,
-    TooSmall = 14,
-    TooLarge = 15,
-    NotExists = 16,
-    NotAllowed = 17,
-    AlreadyMapped = 18,
-}
-
-impl From<u64> for JoinShareStatus {
-    fn from(value: u64) -> Self {
-        match value {
-            0 => Self::Success,
-            10 => Self::UnalignedStart,
-            11 => Self::UnalignedEnd,
-            12 => Self::BlacklistClash,
-            13 => Self::OutOfBounds,
-            14 => Self::TooSmall,
-            15 => Self::TooLarge,
-            16 => Self::NotExists,
-            17 => Self::NotAllowed,
-            18 => Self::AlreadyMapped,
-            n => panic!("Invalid JoinShareStatus number ({})", n),
-        }
-    }
-}
-
-pub fn create_memshare(id: u64, start: u64, end: u64, whitelist: &[Pid]) -> CreateShareStatus {
-    let start = align_down(start as usize, 4096);
-    let end = align_down(end as usize, 4096);
-
-    let status: u64;
-
-    unsafe {
-        asm!(
-            "mov rax, $0x10",
-            "syscall",
-            in("rdi") id,
-            in("rsi") start,
-            in("rdx") end,
-            in("r8") whitelist.as_ptr(),
-            in("r9") whitelist.len(),
-            lateout("rax") status,
-        )
-    }
-
-    serial_println!("status: {}", status);
-
-    status.into()
-}
-
-pub fn join_memshare(id: u64, start: u64, end: u64, blacklist: &[Pid]) -> JoinShareStatus {
-    let start = align_down(start as usize, 4096);
-    let end = align_down(end as usize, 4096);
-
-    let status: u64;
-
-    unsafe {
-        asm!(
-            "mov rax, $0x11",
-            "syscall",
-            in("rdi") id,
-            in("rsi") start,
-            in("rdx") end,
-            in("r8") blacklist.as_ptr(),
-            in("r9") blacklist.len(),
-            lateout("rax") status,
-        )
-    }
-
-    status.into()
 }

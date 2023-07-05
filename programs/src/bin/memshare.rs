@@ -7,7 +7,7 @@
 #![no_std]
 #![no_main]
 
-use programs::{getpid, send, receive, Message, SendStatus, join_memshare, exit, println, create_memshare, sys_yield, CreateShareStatus, JoinShareStatus};
+use programs::{getpid, send, receive, join_memshare, exit, println, create_memshare, sys_yield, Message, SendStatus, CreateShareStatus, JoinShareStatus};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -54,7 +54,7 @@ fn run_server() {
 
     let ptr = target as *mut u16;
 
-    unsafe { *ptr = 2048 };
+    unsafe { *ptr = 16384 };
 
     send(Message {
         pid: 2,
@@ -72,7 +72,7 @@ fn run_client() {
 
     let (_, msg) = receive(&[1]);
 
-    println!("2: Memshare ready, joining");
+    println!("2: Memshare ready, joining"); 
 
     match join_memshare(1, msg.data0, msg.data1, &[]) {
         JoinShareStatus::Success => {},

@@ -35,8 +35,8 @@ impl Tty {
         Self {
             x: 0,
             y: 0,
-            x_max: x_max / (CHAR_WIDTH * scale) - 1,
-            y_max: y_max / (CHAR_HEIGHT * scale) - 1,
+            x_max: x_max as usize / (CHAR_WIDTH * scale) - 1,
+            y_max: y_max as usize / (CHAR_HEIGHT * scale) - 1,
             color,
             scale,
         }

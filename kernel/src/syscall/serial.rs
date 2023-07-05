@@ -9,7 +9,7 @@ pub enum SerialStatus {
     InvalidUtf8 = 30,
 }
 
-pub unsafe fn send_serial(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> SerialStatus {
+pub unsafe fn sys_send_serial(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> SerialStatus {
     use SerialStatus::*;
 
     let text_ptr = rdi as *const u8;

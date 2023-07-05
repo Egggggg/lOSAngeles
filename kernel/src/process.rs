@@ -51,17 +51,8 @@ pub enum ExecState {
     WaitingIpc,
 }
 
-/// Temporary
-#[derive(Clone, Copy, Debug)]
-pub enum Program {
-    // First,
-    // Multi,
-    // Ipc,
-    Memshare,
-}
-
 impl Scheduler {
-    pub unsafe fn add_new(&mut self, program: Program) {
+    pub unsafe fn add_new(&mut self) {
         let old_cr3 = Cr3::read();
 
         // create a new address space with the higher half mapped the same as the current address space
@@ -117,8 +108,6 @@ impl Scheduler {
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
-        serial_println!("Switching processes");
-
         match self.queue.len() {
             0 => loop {},
             1 => return self.queue.get(0),
@@ -135,7 +124,6 @@ impl Scheduler {
 
             match exec_state {
                 ExecState::WaitingIpc => {
-                    serial_println!("This process is waiting for IPC");
                     let status = ipc::refresh_ipc(pid, self);
 
                     if status {
@@ -187,9 +175,6 @@ pub fn run_next() -> ! {
     };
 
     unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
-
-    serial_println!("cr3: {:#018X?}\n  pc: {:#018X}", cr3.start_address(), pc);
-    serial_println!("reg_state: {:#018X?}", state);
 
     unsafe {
         asm!(

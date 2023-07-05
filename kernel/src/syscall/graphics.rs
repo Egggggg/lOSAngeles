@@ -12,7 +12,7 @@ pub enum DrawStatus {
 }
 
 #[no_mangle]
-pub fn draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+pub fn sys_draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
     use DrawStatus::*;
 
     let bitmap_ptr = rdi as *const u8;
@@ -31,9 +31,9 @@ pub fn draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> Draw
     let (x_max, y_max) = vga::get_dimensions();
 
     // bounds checking
-    if x as usize + width as usize * 8 >= x_max {
+    if x as u64 + width as u64 * 8 >= x_max {
         return TooWide
-    } else if y as usize + height as usize >= y_max {
+    } else if y as u64 + height as u64 >= y_max {
         return TooTall
     }
 
@@ -42,7 +42,7 @@ pub fn draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> Draw
     Success
 }
 
-pub fn draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+pub fn sys_draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawStatus {
     use DrawStatus::*;
 
     let text_ptr = rdi as *const u8;
@@ -67,7 +67,7 @@ pub fn draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> Draw
 }
 
 #[no_mangle]
-pub fn print(rdi: u64, rsi: u64, _: u64, _: u64, _: u64, _: u64) -> DrawStatus {
+pub fn sys_print(rdi: u64, rsi: u64, _: u64, _: u64, _: u64, _: u64) -> DrawStatus {
     use DrawStatus::*;
 
     let text_ptr = rdi as *const u8;

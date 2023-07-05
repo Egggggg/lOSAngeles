@@ -19,8 +19,6 @@ use core::{panic::PanicInfo};
 
 use alloc::vec::Vec;
 
-use crate::process::Program;
-
 const JEDD_COLOR: u16 = 0b11111_111111_00000;
 
 #[no_mangle]
@@ -48,8 +46,8 @@ pub extern "C" fn _start() {
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
         
-        scheduler.add_new(Program::Memshare);
-        scheduler.add_new(Program::Memshare);
+        scheduler.add_new();
+        // scheduler.add_new();
         scheduler.next();
     }
 

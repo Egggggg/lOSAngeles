@@ -1,15 +1,17 @@
 use core::arch::asm;
-use alloc::slice;
-use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page, Size4KiB, PhysFrame}, gdt::SegmentSelector}, PrivilegeLevel};
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER}, ipc::{self, MessageState, CreateShareError, JoinShareError}};
+use crate::{serial_println, println, memory, process::{self, ReturnRegs}, syscall::dev::sys_request_fb};
+use abi::Syscall;
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
 
 mod graphics;
 mod serial;
-
+mod ipc;
+mod memshare;
+mod dev;
 
 #[no_mangle]
 pub unsafe fn init_syscalls() {
@@ -106,51 +108,56 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 5: {:#018X}", r9);
     // serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
 
-    process::SCHEDULER.write().get_current().unwrap().reg_state.clear();
-
-    let out = match number {
-        0x00 => {
+    let Ok(out): Result<Syscall, _> = number.try_into() else {
+        asm!(
+            "mov rax, 0xFF",
+            "call _sysret_asm",
+            in("rcx") rcx,
+            options(noreturn),
+        );
+    } ;
+    
+    let out = match out{
+        Syscall::exit => {
             sys_exit();
         }
-        0x08 => {
-            match sys_send(rdi, rsi, rdx, r8, r9) {
-                Ok(true) => ReturnRegs {
-                    rax: 0,
-                    ..Default::default()
-                },
-                Ok(false) => sys_yield(rcx),
-                Err(MessageState::InvalidRecipient) => ReturnRegs {
-                    rax: 10,
-                    ..Default::default()
-                },
-                Err(MessageState::Blocked) => ReturnRegs {
-                    rax: 10,
-                    ..Default::default()
-                },
-                e => panic!("sys_send is {:?}", e),
+        Syscall::send => {
+            let Some(status) = ipc::sys_send(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
+
+            ReturnRegs {
+                rax: status as u64,
+                ..Default::default()
             }
         }
-        0x0A => {
-            sys_receive(rdi, rsi);
+        Syscall::receive => {
+            ipc::sys_receive(rdi, rsi);
             sys_yield(rcx);
         }
-        0x10 => {
-            let status = sys_create_memshare(rdi, rsi, rdx, r8, r9) as u64;
+        Syscall::create_mem_share => {
+            let status = memshare::sys_create_memshare(rdi, rsi, rdx, r8, r9) as u64;
 
             ReturnRegs {
                 rax: status,
                 ..Default::default()
             }
         }
-        0x11 => {
-            let status = sys_join_memshare(rdi, rsi, rdx, r8, r9) as u64;
+        Syscall::join_mem_share => {
+            let status = memshare::sys_join_memshare(rdi, rsi, rdx, r8, r9) as u64;
 
             ReturnRegs {
                 rax: status,
                 ..Default::default()
             }
         }
-        0x40 => {
+        Syscall::request_fb => {
+            let out = sys_request_fb(rdi);
+
+            ReturnRegs {
+                rax: out.status,
+                ..Default::default()
+            }
+        }
+        Syscall::getpid => {
             let out = sys_getpid(rdi);
 
             ReturnRegs {
@@ -159,35 +166,35 @@ pub unsafe fn syscall() {
                 ..Default::default()
             }
         }
-        0x48 => {
+        Syscall::sys_yield => {
             sys_yield(rcx);
         }
-        0x100 => {
-            let status = graphics::draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
+        Syscall::draw_bitmap => {
+            let status = graphics::sys_draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
                 rax: status,
                 ..Default::default()
             }
         }
-        0x101 => {
-            let status = graphics::draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
+        Syscall::draw_string => {
+            let status = graphics::sys_draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
                 rax: status,
                 ..Default::default()
             }
         }
-        0x102 => {
-            let status = graphics::print(rdi, rsi, rdx, r8, r9, sp) as u64;
+        Syscall::print => {
+            let status = graphics::sys_print(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
                 rax: status,
                 ..Default::default()
             }
         }
-        0x130 => {
-            let status = serial::send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
+        Syscall::send_serial => {
+            let status = serial::sys_send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
 
             ReturnRegs {
                 rax: status,
@@ -199,6 +206,8 @@ pub unsafe fn syscall() {
             ..Default::default()
         },
     };
+
+    serial_println!("Syscall complete, returning to {:p}", rcx);
 
     asm!(
         "call _sysret_asm",
@@ -227,132 +236,6 @@ unsafe fn sys_exit() -> ! {
 struct GetPidResponse {
     status: u64,
     pid: u64,
-}
-
-/// Sets a message to be sent to the process with PID `pid`
-/// 
-/// Returns true if it was sent, false if the recipient isn't ready, or Err(()) if it couldn't be sent
-unsafe fn sys_send(to: u64, data0: u64, data1: u64, data2: u64, data3: u64) -> Result<bool, MessageState> {
-    let from = SCHEDULER.read().queue.get(0).unwrap().pid;
-    let scheduler = &mut SCHEDULER.write();
-
-    if let Some(state) = ipc::send_message(from, ipc::Message { to, data0, data1, data2, data3 }, scheduler) {
-        match state {
-            MessageState::Received => Ok(true),
-            MessageState::Waiting => Ok(false),
-            e @ _=> Err(e),
-        }
-    } else {
-        Err(MessageState::InvalidRecipient)
-    }
-}
-
-unsafe fn sys_receive(whitelist_start: u64, whitelist_len: u64) {
-    let pid = SCHEDULER.read().queue.get(0).unwrap().pid;
-
-    let whitelist_ptr = whitelist_start as *const u64;
-    let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
-
-    ipc::receive_message(pid, whitelist);
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-enum CreateShareStatus {
-    Success = 0,
-    UnalignedStart = 10,
-    UnalignedEnd = 11,
-    AlreadyExists = 12,
-    OutOfBounds = 13,
-}
-
-impl From<CreateShareError> for CreateShareStatus {
-    fn from(value: CreateShareError) -> Self {
-        match value {
-            CreateShareError::AlreadyExists => Self::AlreadyExists,
-            CreateShareError::OutOfBounds => Self::OutOfBounds,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-enum JoinShareStatus {
-    Success = 0,
-    UnalignedStart = 10,
-    UnalignedEnd = 11,
-    BlacklistClash = 12,
-    OutOfBounds = 13,
-    TooSmall = 14,
-    TooLarge = 15,
-    NotExists = 16,
-    NotAllowed = 17,
-    AlreadyMapped = 18,
-}
-
-impl From<JoinShareError> for JoinShareStatus {
-    fn from(value: JoinShareError) -> Self {
-        match value {
-            JoinShareError::BlacklistClash => Self::BlacklistClash,
-            JoinShareError::OutOfBounds => Self::OutOfBounds,
-            JoinShareError::TooSmall => Self::TooSmall,
-            JoinShareError::TooLarge => Self::TooLarge,
-            JoinShareError::NotExists => Self::NotExists,
-            JoinShareError::NotAllowed => Self::NotAllowed,
-            JoinShareError::AlreadyMapped => Self::AlreadyMapped,
-        }
-    }
-}
-
-unsafe fn sys_create_memshare(id: u64, start: u64, end: u64, whitelist_start: u64, whitelist_len: u64) -> CreateShareStatus {
-    let Ok(start_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(start)) else {
-        return CreateShareStatus::UnalignedStart;
-    };
-
-    let Ok(end_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(end)) else {
-        return CreateShareStatus::UnalignedEnd;
-    };
-
-    let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
-
-    let whitelist_ptr = whitelist_start as *const u64;
-    let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
-
-    serial_println!("Creating memshare");
-
-    match ipc::MEMORY_SHARE.lock().create(id, start_page, end_page, pid, whitelist) {
-        Ok(_) => CreateShareStatus::Success,
-        Err(e) => e.into()
-    }
-}
-
-unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: u64, blacklist_len: u64) -> JoinShareStatus {
-    let Ok(start_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(start)) else {
-        return JoinShareStatus::UnalignedStart;
-    };
-
-    let Ok(end_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(end)) else {
-        return JoinShareStatus::UnalignedEnd;
-    };
-
-    let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
-
-    let blacklist_ptr = blacklist_start as *const u64;
-    let blacklist = slice::from_raw_parts(blacklist_ptr, blacklist_len as usize).to_vec();
-
-    serial_println!("Joining memshare");
-
-    match ipc::MEMORY_SHARE.lock().join(id, start_page, end_page, pid, blacklist) {
-        Ok(_) => {
-            let mapper = memory::get_mapper();
-            let translation: PhysFrame<Size4KiB> = mapper.translate_page(Page::containing_address(VirtAddr::new(2048))).unwrap();
-
-            serial_println!("0: {:#018X?}", translation);
-
-            JoinShareStatus::Success
-        },
-        Err(e) => e.into(),
-    }
 }
 
 unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
