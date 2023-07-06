@@ -7,7 +7,12 @@
 #![no_std]
 #![no_main]
 
-use std::{getpid, send, receive, join_memshare, exit, println, create_memshare, sys_yield, Message, SendStatus, CreateShareStatus, JoinShareStatus};
+use std::{
+    getpid, exit, println,
+    ipc::{send, receive},
+    memshare::{join_memshare, create_memshare, CreateShareStatus, JoinShareStatus}, 
+    ipc::{Message}
+};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -26,7 +31,7 @@ fn run_server() {
     let start = 0;
     let end = 16384;
 
-    match create_memshare(1, start, end, &[2]) {
+    match create_memshare(start, end, &[2]).status {
         CreateShareStatus::Success => {},
         s => panic!("1: Share failed: {:?}", s),
     }

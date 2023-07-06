@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use std::{request_fb, println, exit};
+use std::{dev::request_fb, println, exit};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

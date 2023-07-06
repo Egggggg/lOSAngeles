@@ -81,14 +81,14 @@ pub fn _print(args: ::core::fmt::Arguments) {
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
-        $crate::_print(format_args!($($arg)*))
+        $crate::graphics::_print(format_args!($($arg)*))
     };
 }
 
 /// Prints to the host through the serial interface, appending a newline
 #[macro_export]
 macro_rules! println {
-    () => ($crate::print!("\n"));
+    () => ($crate::graphics::_print!("\n"));
     ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
 }

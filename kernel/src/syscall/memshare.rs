@@ -1,39 +1,17 @@
 use alloc::slice;
 use x86_64::{structures::paging::{Page, Size4KiB}, VirtAddr};
 
-use crate::{ipc::{CreateShareError, JoinShareError, self}, process, serial_println};
-use abi::memshare::{CreateShareStatus, JoinShareStatus};
+use crate::{ipc, process, serial_println};
+use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareResponse};
 
-impl From<CreateShareError> for CreateShareStatus {
-    fn from(value: CreateShareError) -> Self {
-        match value {
-            CreateShareError::AlreadyExists => Self::AlreadyExists,
-            CreateShareError::OutOfBounds => Self::OutOfBounds,
-        }
-    }
-}
 
-impl From<JoinShareError> for JoinShareStatus {
-    fn from(value: JoinShareError) -> Self {
-        match value {
-            JoinShareError::BlacklistClash => Self::BlacklistClash,
-            JoinShareError::OutOfBounds => Self::OutOfBounds,
-            JoinShareError::TooSmall => Self::TooSmall,
-            JoinShareError::TooLarge => Self::TooLarge,
-            JoinShareError::NotExists => Self::NotExists,
-            JoinShareError::NotAllowed => Self::NotAllowed,
-            JoinShareError::AlreadyMapped => Self::AlreadyMapped,
-        }
-    }
-}
-
-pub unsafe fn sys_create_memshare(id: u64, start: u64, end: u64, whitelist_start: u64, whitelist_len: u64) -> CreateShareStatus {
+pub unsafe fn sys_create_memshare(start: u64, end: u64, whitelist_start: u64, whitelist_len: u64) -> CreateShareResponse {
     let Ok(start_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(start)) else {
-        return CreateShareStatus::UnalignedStart;
+        return CreateShareStatus::UnalignedStart.into();
     };
 
     let Ok(end_page): Result<Page<Size4KiB>, _> = Page::from_start_address(VirtAddr::new(end)) else {
-        return CreateShareStatus::UnalignedEnd;
+        return CreateShareStatus::UnalignedEnd.into();
     };
 
     let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
@@ -43,9 +21,9 @@ pub unsafe fn sys_create_memshare(id: u64, start: u64, end: u64, whitelist_start
 
     serial_println!("Creating memshare");
 
-    match ipc::MEMORY_SHARE.lock().create(id, start_page, end_page, pid, whitelist) {
-        Ok(_) => CreateShareStatus::Success,
-        Err(e) => e.into()
+    match ipc::MEMORY_SHARE.lock().create(start_page, end_page, pid, whitelist) {
+        Ok(id) => CreateShareResponse { status: CreateShareStatus::Success, id: Some(id) },
+        Err(e) => e.into(),
     }
 }
 

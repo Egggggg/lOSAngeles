@@ -1,5 +1,6 @@
 pub mod memshare;
 
+use abi::ipc::Message;
 use alloc::vec::Vec;
 
 use crate::{process::{Pid, ReturnRegs, SCHEDULER, ExecState, Scheduler}, serial_println};
@@ -25,15 +26,6 @@ pub enum MessageState {
     Waiting,
     Blocked,
     InvalidRecipient,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Message {
-    pub to: Pid,
-    pub data0: u64,
-    pub data1: u64,
-    pub data2: u64,
-    pub data3: u64,
 }
 
 impl MessageHandler {
@@ -72,11 +64,11 @@ impl MessageHandler {
 /// 
 /// Returns `None` if the recipient doesn't exist
 pub fn send_message(sender: Pid, message: Message, scheduler: &mut Scheduler)  -> Option<MessageState> {
-    let Message { to, data0, data1, data2, data3 } = message;
+    let Message { pid, data0, data1, data2, data3 } = message;
 
     let processes = &mut scheduler.queue;
 
-    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == to) else {
+    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == pid) else {
         return None;
     };
 

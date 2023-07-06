@@ -52,8 +52,14 @@ pub enum ExecState {
     WaitingIpc,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Program {
+    Current1,
+    Graphics
+}
+
 impl Scheduler {
-    pub unsafe fn add_new(&mut self, privileged: bool) {
+    pub unsafe fn add_new(&mut self, program: Program, privileged: bool) {
         let old_cr3 = Cr3::read();
 
         // create a new address space with the higher half mapped the same as the current address space
@@ -64,11 +70,12 @@ impl Scheduler {
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
-        let contents = include_bytes!("../../target/programs/current1.elf");
-        let entry = elf::load_elf(contents).unwrap();
+        let entry = {
+            
+            include_bytes!("../../target/programs/current1.elf");
+            elf::load_elf(contents).unwrap()
+        };
     
-        // let stack_start: Page<Size4KiB> = Page::from_start_address(VirtAddr::new(STACK)).unwrap();
-        // let stack_end: Page<Size4KiB> = Page::containing_address(VirtAddr::new(STACK + STACK_SIZE - 1);
         let stack_start = VirtAddr::new(STACK);
         let stack_end = VirtAddr::new(STACK + STACK_SIZE - 64);
         let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;

@@ -134,10 +134,11 @@ pub unsafe fn syscall() {
             sys_yield(rcx);
         }
         Syscall::create_mem_share => {
-            let status = memshare::sys_create_memshare(rdi, rsi, rdx, r8, r9) as u64;
+            let out = memshare::sys_create_memshare(rdi, rsi, rdx, r8);
 
             ReturnRegs {
-                rax: status,
+                rax: out.status as u64,
+                rdi: out.id.unwrap_or(0),
                 ..Default::default()
             }
         }

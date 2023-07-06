@@ -1,34 +1,18 @@
+use abi::memshare::{ShareId, CreateShareError, JoinShareError};
 use alloc::{vec::Vec, collections::BTreeMap};
 use spin::Mutex;
 use x86_64::{structures::paging::{PhysFrame, Page, PageTableFlags, Mapper, FrameAllocator, Size4KiB}, VirtAddr};
 
 use crate::{process::Pid, memory, serial_println};
 
-
 /// This guy keep strack of all the shared memory regions
-pub static MEMORY_SHARE: Mutex<SharedMemory> = Mutex::new(SharedMemory { regions: BTreeMap::new() });
+pub static MEMORY_SHARE: Mutex<SharedMemory> = Mutex::new(SharedMemory { regions: BTreeMap::new(), next_id: 0 });
 
 // TODO: Implement memory sharing
 pub struct SharedMemory {
     /// This maps region IDs to groups of physical frames mapped to the region
     pub regions: BTreeMap<u64, SharedRegion>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum CreateShareError {
-    AlreadyExists,
-    OutOfBounds,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum JoinShareError {
-    NotExists,
-    OutOfBounds,
-    AlreadyMapped,
-    TooSmall,
-    TooLarge,
-    NotAllowed,
-    BlacklistClash,
+    next_id: ShareId,
 }
 
 #[derive(Clone, Debug)]
@@ -39,12 +23,7 @@ pub struct SharedRegion {
 }
 
 impl SharedMemory {
-
-    pub unsafe fn create(&mut self, id: u64, start: Page, end: Page, pid: Pid, whitelist: Vec<Pid>) -> Result<(), CreateShareError> {
-        if self.regions.contains_key(&id) {
-            return Err(CreateShareError::AlreadyExists);
-        }
-
+    pub unsafe fn create(&mut self, start: Page, end: Page, pid: Pid, whitelist: Vec<Pid>) -> Result<ShareId, CreateShareError> {
         // the upper half of virtual memory is mapped to the kernel in every address space
         // this may change later
         if end.start_address() >= VirtAddr::new(0xffff_8000_0000_0000) {
@@ -75,9 +54,11 @@ impl SharedMemory {
             members: Vec::from([pid]),
         };
 
+        let id = self.new_id();
+
         self.regions.insert(id, region);
 
-        Ok(())
+        Ok(id)
     }
 
     pub unsafe fn join(&mut self, id: u64, start: Page, end: Page, pid: Pid, blacklist: Vec<Pid>) -> Result<(), JoinShareError> {
@@ -156,5 +137,12 @@ impl SharedMemory {
         region.members.push(pid);
 
         Ok(())
+    }
+
+    fn new_id(&mut self) -> ShareId {
+        let id = self.next_id;
+        self.next_id += 1;
+
+        id
     }
 }

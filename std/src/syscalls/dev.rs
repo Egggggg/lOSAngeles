@@ -1,6 +1,7 @@
 use core::arch::asm;
 
-use abi::{dev::{FramebufferDescriptor, RequestFbStatus}, Syscall};
+use abi::Syscall;
+pub use abi::dev::{FramebufferDescriptor, RequestFbStatus};
 
 pub fn request_fb() -> (RequestFbStatus, Option<FramebufferDescriptor>) {
     let descriptor = FramebufferDescriptor::default();

@@ -5,19 +5,13 @@
 //!   On Return:
 //!     RAX - Status code
 //!     RDI, RSI, RDX, R8, R9, R10 - Return values, first to last
-mod serial;
-mod graphics;
-mod ipc;
-mod memshare;
-mod dev;
+pub mod serial;
+pub mod graphics;
+pub mod ipc;
+pub mod memshare;
+pub mod dev;
 
 use core::arch::asm;
-
-pub use serial::*;
-pub use graphics::*;
-pub use ipc::*;
-pub use memshare::*;
-pub use dev::*;
 
 pub fn exit() {
     unsafe {

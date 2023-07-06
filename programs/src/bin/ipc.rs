@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use std::{getpid, receive, println, send, Pid, ReceiveStatus, Message, SendStatus};
+use std::{getpid, println, ipc::{receive, send, Pid, ReceiveStatus, Message, SendStatus}};
 
 extern crate alloc;
 

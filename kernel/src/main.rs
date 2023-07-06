@@ -41,8 +41,6 @@ pub extern "C" fn _start() {
 
     println!("cool[4] = {}", cool[4]);
 
-    // unsafe { process::test(&mut frame_allocator); }
-
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
         

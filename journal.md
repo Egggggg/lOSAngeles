@@ -91,4 +91,13 @@ I forgor 💀
 Preemptive multitasking babeyyyy
 
 ## July 3
+
 Interprocess communication
+
+## July 4
+
+Memory sharing and a privileged syscall to map the system framebuffer
+
+## July 4
+
+Worked on moving the graphics syscalls (draw_bitmap, draw_string, and print) into a user space graphics server
