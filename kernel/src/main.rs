@@ -46,7 +46,7 @@ pub extern "C" fn _start() {
     unsafe {
         let mut scheduler = process::SCHEDULER.write();
         
-        scheduler.add_new();
+        scheduler.add_new(false);
         // scheduler.add_new();
         scheduler.next();
     }

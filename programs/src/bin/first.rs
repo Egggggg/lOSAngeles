@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use programs::{exit, serial_print, draw_bitmap, draw_string, println, serial_println, sys_yield, DrawBitmapStatus};
+use std::{exit, serial_print, draw_bitmap, draw_string, println, serial_println, sys_yield, DrawBitmapStatus};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -51,7 +51,6 @@ pub unsafe extern "C" fn _start() {
     for x in 0..16 {
         for y in 0..16 {
             draw_bitmap(&[0x80], x * 32, y * 32, 0b11111_111111_00000, 1, 1, 24);
-            sys_yield();
         }
     }
 

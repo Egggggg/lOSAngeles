@@ -1,11 +1,20 @@
-use abi::dev::{RequestFbResponse, FramebufferDescriptor};
+use abi::dev::{RequestFbStatus, FramebufferDescriptor};
 use x86_64::{structures::paging::{Page, Mapper, PageTableFlags, mapper::TranslateError, Size4KiB, Size2MiB}, VirtAddr};
 
-use crate::{vga, memory, serial_println};
+use crate::{vga, memory, serial_println, process};
 
 const FB_START: u64 = 0x0000_7fff_0000_0000;
 
-pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbResponse {
+pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbStatus {
+    {
+        let scheduler = process::SCHEDULER.read();
+        let p = scheduler.queue.get(0).unwrap();
+    
+        if !p.privileged {
+            return RequestFbStatus::NotAllowed;
+        }
+    }
+
     let fb = &vga::FB;
     let size = fb.pitch * fb.height;
     let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE;
@@ -77,7 +86,5 @@ pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbResponse {
 
     unsafe { *descriptor_ptr = descriptor };
 
-    RequestFbResponse{
-        status: 0,
-    }
+    RequestFbStatus::Success
 }

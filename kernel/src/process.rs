@@ -32,6 +32,7 @@ pub struct Process {
     pub reg_state: ReturnRegs,
     pub exec_state: ExecState,
     pub message_handler: MessageHandler,
+    pub privileged: bool,
 }
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -52,7 +53,7 @@ pub enum ExecState {
 }
 
 impl Scheduler {
-    pub unsafe fn add_new(&mut self) {
+    pub unsafe fn add_new(&mut self, privileged: bool) {
         let old_cr3 = Cr3::read();
 
         // create a new address space with the higher half mapped the same as the current address space
@@ -98,6 +99,7 @@ impl Scheduler {
             reg_state: ReturnRegs::new(),
             exec_state: ExecState::NotStarted,
             message_handler: MessageHandler::new(),
+            privileged,
         };
 
         self.next_pid.store(pid + 1, Ordering::Relaxed);

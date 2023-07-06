@@ -12,7 +12,7 @@ pub use syscalls::*;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    serial_print!("{}", info);
+    print!("{}", info);
     loop {}
 }
 

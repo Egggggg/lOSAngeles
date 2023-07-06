@@ -7,7 +7,7 @@
 #![no_std]
 #![no_main]
 
-use programs::{getpid, send, receive, join_memshare, exit, println, create_memshare, sys_yield, Message, SendStatus, CreateShareStatus, JoinShareStatus};
+use std::{getpid, send, receive, join_memshare, exit, println, create_memshare, sys_yield, Message, SendStatus, CreateShareStatus, JoinShareStatus};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

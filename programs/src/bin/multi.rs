@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use programs::{getpid, print, sys_yield};
+use std::{getpid, print, sys_yield};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

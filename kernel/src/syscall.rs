@@ -150,10 +150,10 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::request_fb => {
-            let out = sys_request_fb(rdi);
+            let out = sys_request_fb(rdi) as u64;
 
             ReturnRegs {
-                rax: out.status,
+                rax: out,
                 ..Default::default()
             }
         }
