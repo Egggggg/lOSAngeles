@@ -1,16 +1,18 @@
 use core::arch::asm;
 
+use abi::Syscall;
 use alloc::fmt;
 
 #[doc(hidden)]
 pub fn _serial_print(args: ::core::fmt::Arguments) {
+    let rax = Syscall::send_serial as u64;
     let output = fmt::format(args);
     let length = output.len();
 
     unsafe {
         asm!(
-            "mov rax, $0x130",
             "syscall",
+            in("rax") rax,
             in("rdi") output.as_ptr(),
             in("rsi") length,
         );

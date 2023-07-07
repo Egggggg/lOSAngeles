@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use spin::RwLock;
 use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}};
 
-use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self, MessageHandlerState, MessageState}};
+use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self}};
 
 mod elf;
 
@@ -34,6 +34,12 @@ pub struct Process {
     pub exec_state: ExecState,
     pub message_handler: MessageHandler,
     pub privileged: bool,
+    pub response_buffer: Option<ResponseBuffer>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ResponseBuffer {
+    pub size: u64,
 }
 
 #[derive(Clone, Copy, Default, Debug)]
@@ -118,6 +124,8 @@ impl Scheduler {
             exec_state: ExecState::NotStarted,
             message_handler: MessageHandler::new(),
             privileged,
+            response_buffer: None,
+            
         };
 
         self.next_pid.store(pid + 1, Ordering::Relaxed);
@@ -128,15 +136,10 @@ impl Scheduler {
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
-        match self.queue.len() {
-            0 => loop {},
-            1 => return self.queue.get(0),
-            _ => {},
-        }
 
-        serial_println!("{:#?}", self.queue);
+        // serial_println!("{:#?}", self.queue);
 
-        for _ in 1..self.queue.len() {
+        for _ in 0..self.queue.len() {
             self.queue.rotate_left(1);
 
             let (exec_state, pid) = {
@@ -144,22 +147,22 @@ impl Scheduler {
                 (process.exec_state, process.pid)
             };
 
-            serial_println!("Checking process {}", pid);
+            // serial_println!("Checking process {}", pid);
 
             match exec_state {
                 ExecState::WaitingIpc => {
-                    serial_println!("   Process is waiting on IPC");
+                    // serial_println!("   Process is waiting on IPC");
                     let status = ipc::refresh_ipc(pid, self);
 
                     if status {
                         self.get_current().unwrap().exec_state = ExecState::Running;
-                        serial_println!("   Resuming process");
+                        // serial_println!("   Resuming process");
                         return self.queue.get(0);
                     }
 
                 }
                 _ => {
-                    serial_println!("Resuming process {}", pid);
+                    // serial_println!("Resuming process {}", pid);
                     return self.queue.get(0);
                 },
             }

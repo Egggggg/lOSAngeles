@@ -13,6 +13,8 @@ pub mod dev;
 
 use core::arch::asm;
 
+use abi::{ConfigRBufferStatus, Syscall};
+
 pub fn exit() {
     unsafe {
         asm!(
@@ -22,14 +24,32 @@ pub fn exit() {
     }
 }
 
+pub fn config_rbuffer(size: u64) -> ConfigRBufferStatus {
+    let rax = Syscall::config_rbuffer as u64;
+    let status: u64;
+
+    unsafe {
+        asm!(
+            "syscall",
+            in("rax") rax,
+            in("rdi") size,
+            lateout("rax") status,
+        )
+    }
+
+    status.try_into().unwrap()
+}
+
 pub fn getpid() -> u64 {
+    let rax = Syscall::getpid as u64;
+    
     let rdi: u64;
 
     unsafe {
         asm!(
-            "mov rax, $0x40",
             "mov rdi, $0x00",
             "syscall",
+            in("rax") rax,
             lateout("rdi") rdi,
         );
     }
@@ -38,10 +58,12 @@ pub fn getpid() -> u64 {
 }
 
 pub fn sys_yield() {
+    let rax = Syscall::sys_yield as u64;
+
     unsafe { 
         asm!(
-            "mov rax, $0x48",
             "syscall",
+            in("rax") rax,
         ); 
     }
 }

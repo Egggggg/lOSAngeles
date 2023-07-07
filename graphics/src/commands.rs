@@ -1,10 +1,9 @@
 use core::sync::atomic::AtomicU64;
-use std::{ipc::{Pid, Message}, memshare::{create_memshare, ShareId, CreateShareError}, dev::FramebufferDescriptor, sys_graphics::DrawBitmapStatus, println};
+use std::{ipc::{Message, PayloadMessage}, sys_graphics::DrawBitmapStatus, println};
 
-use alloc::{collections::BTreeMap, slice};
-use core::sync::atomic::Ordering;
+use alloc::{slice, string::String};
 
-use crate::drawing;
+use crate::{drawing, font::{FONT, self}};
 
 static NEXT_SHARE: AtomicU64 = AtomicU64::new(4096);
 
@@ -12,7 +11,6 @@ static NEXT_SHARE: AtomicU64 = AtomicU64::new(4096);
 #[repr(u64)]
 #[allow(non_camel_case_types)]
 pub enum Command {
-    share = 0x00,
     draw_bitmap = 0x10,
     draw_string = 0x11,
 }
@@ -25,7 +23,6 @@ impl TryFrom<u64> for Command {
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         match value {
-            0x00 => Ok(Self::share),
             0x10 => Ok(Self::draw_bitmap),
             0x11 => Ok(Self::draw_string),
             _ => Err(InvalidCommand),
@@ -33,86 +30,44 @@ impl TryFrom<u64> for Command {
     }
 }
 
-// TODO: Make this remove old regions when new ones are requested (this will require unsharing regions to be made possible by the kernel)
-pub fn share(regions: &mut BTreeMap<Pid, (ShareId, u64)>, pid: Pid) -> Message{
-    // Choose a page to be shared
-    let ptr = NEXT_SHARE.load(Ordering::Relaxed);
-    NEXT_SHARE.store(ptr + 4096, Ordering::Relaxed);
+pub fn draw_bitmap(request: PayloadMessage) -> Message {
+    let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
 
-    // Allocate the page
-    unsafe { (ptr as *mut u64).write(0) };
+    let data0_bytes = data0.to_le_bytes();
+    println!("data0: {:#04X?}", data0_bytes);
 
-    let response = create_memshare(ptr, ptr, &[pid]);
+    let x = data0_bytes[5] as u16 | ((data0_bytes[6] as u16) << 8);
+    let y = data0_bytes[3] as u16 | ((data0_bytes[4] as u16) << 8);
+    let color = data0_bytes[1] as u16 | ((data0_bytes[2] as u16) << 8);
 
-    if response.status.is_err() {
+    let data1_bytes = data1.to_le_bytes();
+
+    let width = data1_bytes[6] as u16 | ((data1_bytes[7] as u16) << 8);
+    let height = data1_bytes[4] as u16 | ((data1_bytes[5] as u16) << 8);
+    let scale = data1_bytes[0] as u8;
+
+    if width as u64 * height as u64 != payload_len {
         return Message {
             pid,
-            data0: response.status as _,
+            data0: DrawBitmapStatus::InvalidLength as u64,
             ..Default::default()
         };
     }
 
-    let id = response.id.unwrap();
-
-    regions.insert(pid, (id, ptr));
-
-    Message {
-        pid,
-        data0: 0,
-        data1: id,
-        ..Default::default()
-    }
-}
-
-pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) -> Message {
-    let Message { pid, data0: _, data1, data2, data3 } = request;
-
-    if data1 >= 4096 {
-        println!("{}", data1);
-
-        return Message {
-            pid,
-            data0: DrawBitmapStatus::InvalidStart as _,
-            ..Default::default()
-        };
-    }
-
-    let Some(region_start) = regions.get(&pid) else {
-        return Message {
-            pid,
-            data0: DrawBitmapStatus::NotFriends as _,
-            ..Default::default()
-        };
-    };
-    let region_ptr = region_start.1 as *const u8;
-    let bitmap_ptr = unsafe { region_ptr.offset(data1 as isize) };
-
-    println!("{:p}", bitmap_ptr);
-
-    let data2_bytes = data2.to_le_bytes();
-    let x = data2_bytes[6] as u16 | ((data2_bytes[7] as u16) << 8);
-    let y = data2_bytes[4] as u16 | ((data2_bytes[5] as u16) << 8);
-    let color = data2_bytes[2] as u16 | ((data2_bytes[3] as u16) << 8);
-    let width = data2_bytes[1] as u8;
-    let height = data2_bytes[0] as u8;
-
-    let scale = (data3 & 0xFF) as u8;
-
-    let bitmap = unsafe { slice::from_raw_parts(bitmap_ptr, width as usize * height as usize) };
-
-    println!("{:#04X?}", bitmap);
+    let bitmap_ptr = payload as *const u8;
+    let bitmap = unsafe { slice::from_raw_parts(bitmap_ptr, payload_len as usize) };
 
     let x_max = drawing::FB.width;
     let y_max = drawing::FB.height;
 
     // Bounds checking
-    if x as u64 + width as u64 * 8 >= x_max {
+    if x as u64 + width as u64 * 8 * scale as u64 >= x_max {
         return Message {
             pid,
             data0: DrawBitmapStatus::TooWide as u64,
             ..Default::default()
         };
-    } else if y as u64 + height as u64 >= y_max {
+    } else if y as u64 + height as u64 * scale as u64 >= y_max {
         return Message {
             pid,
             data0: DrawBitmapStatus::TooTall as u64,
@@ -125,6 +80,49 @@ pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) ->
     Message {
         pid,
         data0: DrawBitmapStatus::Success as u64,
+        ..Default::default()
+    }
+}
+
+pub fn draw_string(request: PayloadMessage) -> Message {
+    let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
+
+    let data0_bytes = data0.to_le_bytes();
+    let x = data0_bytes[5] as u16 | ((data0_bytes[6] as u16) << 8);
+    let y = data0_bytes[3] as u16 | ((data0_bytes[4] as u16) << 8);
+    let color = data0_bytes[1] as u16 | ((data0_bytes[2] as u16) << 8);
+    let scale = data0_bytes[0];
+    
+    let payload_ptr = payload as *const u8;
+    let payload_bytes = unsafe { slice::from_raw_parts(payload_ptr, payload_len as usize) };
+    let text = String::from_utf8(payload_bytes.into()).unwrap();
+
+    let max_width = drawing::FB.width;
+    let max_height = drawing::FB.height;
+
+    if x as u64 + text.len() as u64 * scale as u64 > max_width {
+        return Message {
+            pid,
+            data0: DrawBitmapStatus::TooWide as u64,
+            ..Default::default()
+        };
+    } else if y as u64 + 16 * scale as u64 > max_height {
+        return Message {
+            pid,
+            data0: DrawBitmapStatus::TooTall as u64,
+            ..Default::default()
+        };
+    }
+
+    for (i, c) in text.chars().enumerate() {
+        let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
+
+        drawing::draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
+    }
+
+    Message {
+        pid,
+        data0: 0,
         ..Default::default()
     }
 }

@@ -98,10 +98,16 @@ Interprocess communication
 
 Memory sharing and a privileged syscall to map the system framebuffer
 
-## July 4
+## July 5
 
 Worked on moving the graphics syscalls (draw_bitmap, draw_string, and print) into a user space graphics server
 
-## July 5
+## July 6
 
-Fixed some IPC bugs and got my first server command (draw_bitmap) working
+Fixed some IPC bugs and got my first server function (draw_bitmap) working
+
+## July 7
+
+Added payload messages to allow sending dynamically sized data between processes without explicitly sharing memory
+
+Added the draw_string function to my graphics server

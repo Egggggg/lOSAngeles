@@ -7,26 +7,27 @@ extern crate alloc;
 
 mod commands;
 mod drawing;
+mod font;
 
-use std::{ipc::{receive, send, Pid}, println, serial_println, exit};
+use std::{ipc::{receive, send}, println, serial_println, exit, config_rbuffer};
 
-use alloc::collections::BTreeMap;
 use commands::Command;
-
-type ShareId = u64;
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
     serial_println!("[GRAPHICS] Started");
-    let mut regions: BTreeMap<Pid, (ShareId, u64)> = BTreeMap::new();
 
-    for _ in 0..2 {
-        let (_, request) = receive(&[]);
+    config_rbuffer(4096);
 
-        println!("[GRAPHICS] Received {:?}", request);
+    loop {
+        let request = receive(&[]);
 
-        let Ok(command): Result<Command, _> = request.data0.try_into() else {
-            panic!("Invalid command: {:#04X}", request.data0);
+        println!("[GRAPHICS] Received {:#0X?}", request);
+
+        let opcode = (request.data0 >> 56) & 0xFF;
+
+        let Ok(command): Result<Command, _> = opcode.try_into() else {
+            panic!("Invalid command: {:#04X}", opcode);
 
             // send(Message {
             //     pid: request.pid,
@@ -37,15 +38,14 @@ pub unsafe extern "C" fn _start() {
             // continue;
         };
 
-        let response = match command {
-            Command::share => commands::share(&mut regions, request.pid),
-            Command::draw_bitmap => commands::draw_bitmap(&regions, request),
-            Command::draw_string => todo!(),
+        println!("{:?} ({:#04X})", command, opcode);
+
+        let response = match command  {
+            Command::draw_bitmap => commands::draw_bitmap(request.into()),
+            Command::draw_string => commands::draw_string(request.into()),
         };
 
         // change this to a notify later
         send(response);
     }
-
-    exit();
 }

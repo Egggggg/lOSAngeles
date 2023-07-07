@@ -29,8 +29,6 @@ pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbStatus {
 
     match frame {
         Ok(_) => {
-            serial_println!("The framebuffer is mapped with 4KiB pages.... oof...");
-            
             let end_page: Page<Size4KiB> = Page::containing_address(VirtAddr::new(fb.address + size));
             let page_range = Page::range_inclusive(kernel_page, end_page);
 
@@ -43,8 +41,6 @@ pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbStatus {
             }
         },
         Err(TranslateError::ParentEntryHugePage) => {
-            serial_println!("The framebuffer is mapped with 2MiB pages");
-
             // if the framebuffer takes up more than one huge page
             if size > 1024 * 2048 {
                 panic!("This was unexpected... The framebuffer is larger than 2MiB");
@@ -64,8 +60,6 @@ pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbStatus {
         }
         _ => panic!("Framebuffer not mapped"),
     }
-
-    serial_println!("Framebuffer mapped to user memory at {:#018X}", FB_START);
 
     let user_fb_address = FB_START + u64::from(fb_virt.page_offset());
 

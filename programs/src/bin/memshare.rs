@@ -75,7 +75,7 @@ fn run_server() {
 fn run_client() {
     println!("2: Client started");
 
-    let (_, msg) = receive(&[1]);
+    let msg = receive(&[1]);
 
     println!("2: Memshare ready, joining"); 
 
@@ -101,7 +101,7 @@ fn run_client() {
         ..Default::default()
     });
 
-    let (_, msg) = receive(&[1]);
+    let msg = receive(&[1]);
     let ptr = msg.data0 as *const u16;
 
     println!("2: Haha! It's {}", unsafe { *ptr });

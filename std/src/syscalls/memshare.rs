@@ -1,11 +1,12 @@
 use core::arch::asm;
 
-use abi::ipc::Pid;
+use abi::{ipc::Pid, Syscall};
 pub use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareError, CreateShareResponse};
 
 use crate::align_down;
 
 pub fn create_memshare(start: u64, end: u64, whitelist: &[Pid]) -> CreateShareResponse {
+    let rax = Syscall::create_memshare as u64;
     let start = align_down(start as usize, 4096);
     let end = align_down(end as usize, 4096);
 
@@ -14,8 +15,8 @@ pub fn create_memshare(start: u64, end: u64, whitelist: &[Pid]) -> CreateShareRe
 
     unsafe {
         asm!(
-            "mov rax, $0x10",
             "syscall",
+            in("rax") rax,
             in("rdi") start,
             in("rsi") end,
             in("rdx") whitelist.as_ptr(),
@@ -41,6 +42,7 @@ pub fn create_memshare(start: u64, end: u64, whitelist: &[Pid]) -> CreateShareRe
 }
 
 pub fn join_memshare(id: ShareId, start: u64, end: u64, blacklist: &[Pid]) -> JoinShareStatus {
+    let rax = Syscall::join_memshare as u64;
     let start = align_down(start as usize, 4096);
     let end = align_down(end as usize, 4096);
 
@@ -48,8 +50,8 @@ pub fn join_memshare(id: ShareId, start: u64, end: u64, blacklist: &[Pid]) -> Jo
 
     unsafe {
         asm!(
-            "mov rax, $0x11",
             "syscall",
+            in("rax") rax,
             in("rdi") id,
             in("rsi") start,
             in("rdx") end,

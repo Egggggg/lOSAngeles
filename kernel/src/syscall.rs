@@ -1,8 +1,8 @@
 use core::arch::asm;
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
 
-use crate::{serial_println, println, memory, process::{self, ReturnRegs}, syscall::dev::sys_request_fb};
-use abi::Syscall;
+use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER, ResponseBuffer}, syscall::dev::sys_request_fb};
+use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -121,6 +121,14 @@ pub unsafe fn syscall() {
         Syscall::exit => {
             sys_exit();
         }
+        Syscall::config_rbuffer => {
+            let status = sys_config_rbuffer(rdi);
+
+            ReturnRegs {
+                rax: status as u64,
+                ..Default::default()
+            }
+        }
         Syscall::send => {
             let Some(status) = ipc::sys_send(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
 
@@ -133,7 +141,15 @@ pub unsafe fn syscall() {
             ipc::sys_receive(rdi, rsi);
             sys_yield(rcx);
         }
-        Syscall::create_mem_share => {
+        Syscall::send_payload => {
+            let Some(status) = ipc::sys_send_payload(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
+
+            ReturnRegs {
+                rax: status as u64,
+                ..Default::default()
+            }
+        }
+        Syscall::create_memshare => {
             let out = memshare::sys_create_memshare(rdi, rsi, rdx, r8);
 
             ReturnRegs {
@@ -142,7 +158,7 @@ pub unsafe fn syscall() {
                 ..Default::default()
             }
         }
-        Syscall::join_mem_share => {
+        Syscall::join_memshare => {
             let status = memshare::sys_join_memshare(rdi, rsi, rdx, r8, r9) as u64;
 
             ReturnRegs {
@@ -218,7 +234,7 @@ pub unsafe fn syscall() {
     );
 }
 
-unsafe fn sys_exit() -> ! {
+fn sys_exit() -> ! {
     println!("Process exited");
     
     {        
@@ -234,12 +250,36 @@ unsafe fn sys_exit() -> ! {
     process::run_next();
 }
 
+unsafe fn sys_config_rbuffer(size: u64) -> ConfigRBufferStatus {
+    serial_println!("Giving this bad boye a response buffer");
+
+    if size > RESPONSE_BUFFER_SIZE {
+        return ConfigRBufferStatus::TooBig;
+    }
+
+    let start = VirtAddr::new(RESPONSE_BUFFER);
+    let end = start + (size - 1);
+    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE;
+
+    memory::map_area(start, end, flags).unwrap();
+
+    let mut scheduler = SCHEDULER.write();
+    let process = scheduler.get_current().unwrap();
+    
+    match process.response_buffer {
+        Some(ref mut rb) => rb.size = size,
+        None => process.response_buffer = Some(ResponseBuffer { size }),
+    }
+
+    ConfigRBufferStatus::Success
+}
+
 struct GetPidResponse {
     status: u64,
     pid: u64,
 }
 
-unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
+fn sys_getpid(rdi: u64) -> GetPidResponse {
     let scheduler = process::SCHEDULER.read();
     
     if rdi == 0 {
@@ -257,7 +297,7 @@ unsafe fn sys_getpid(rdi: u64) -> GetPidResponse {
     }
 }
 
-unsafe fn sys_yield(rcx: *const ()) -> ! {
+fn sys_yield(rcx: *const ()) -> ! {
     {
         let mut scheduler = process::SCHEDULER.write();
         let current = scheduler.get_current().unwrap();

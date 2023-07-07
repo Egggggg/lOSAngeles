@@ -62,7 +62,7 @@ impl SharedMemory {
     }
 
     pub unsafe fn join(&mut self, id: u64, start: Page, end: Page, pid: Pid, blacklist: Vec<Pid>) -> Result<(), JoinShareError> {
-        serial_println!("{:#018X?}", self.regions);
+        // serial_println!("{:#018X?}", self.regions);
         
         if !self.regions.contains_key(&id) {
             return Err(JoinShareError::NotExists);
@@ -119,12 +119,12 @@ impl SharedMemory {
         let mut frame_allocator = memory::PHYS_ALLOCATOR.lock();
         let frame_allocator = frame_allocator.0.as_mut().unwrap();
 
-        serial_println!("# frames: {}", region.frames.len());
+        // serial_println!("# frames: {}", region.frames.len());
 
         let pages = Page::range_inclusive(start, end);
 
         for pair in region.frames.iter().zip(pages) {
-            serial_println!("Mapping {:#018X?} to {:#018X}", pair.1, pair.0.start_address());
+            // serial_println!("Mapping {:#018X?} to {:#018X}", pair.1, pair.0.start_address());
 
             unsafe { mapper.map_to(pair.1, *pair.0, flags, frame_allocator).unwrap().flush() };
         }

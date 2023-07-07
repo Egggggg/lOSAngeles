@@ -31,12 +31,6 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
     let pixel_offset = (x + y * (FB.pitch as usize / 2)) as isize;
     let mut base: *mut u16 = unsafe { (FB.address as *mut u16).offset(pixel_offset) };
 
-    println!("{:#018X}", FB.address);
-
-    println!("{}x{}", width, height);
-    println!("({}, {})", x, y);
-    println!("x{}", scale);
-
     for row in 0..height {
         for col in 0..width {
             let byte = bitmap[row * width + col];

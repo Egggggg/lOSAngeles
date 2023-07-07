@@ -59,8 +59,6 @@ pub fn sys_draw_string(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> 
         return InvalidUtf8
     };
     
-    serial_println!("{}", text);
-    
     vga::put_str(x as usize, y as usize, scale as usize, &text, color);
 
     Success
