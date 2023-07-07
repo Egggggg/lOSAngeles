@@ -5,6 +5,8 @@ pub use abi::render::DrawBitmapStatus;
 use crate::{ipc::{send, receive}, memshare::join_memshare, println};
 
 pub fn share() -> Result<JoinShareStatus, u64> {
+    println!("Sharing");
+
     let status = send(Message {
         pid: 1,
         data0: 0x00,
@@ -21,7 +23,7 @@ pub fn share() -> Result<JoinShareStatus, u64> {
         return Err(msg.data0);
     }
 
-    let status = join_memshare(msg.data1, 0, 0, &[]);
+    let status = join_memshare(msg.data1, 4096, 4096, &[]);
 
     if status as u64 >= 10 {
         Err(status as u64)
@@ -31,26 +33,23 @@ pub fn share() -> Result<JoinShareStatus, u64> {
 }
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
+    println!("Drawing");
     if width as usize * height as usize != bitmap.len() {
         println!("InvalidLength locally");
         return DrawBitmapStatus::InvalidLength;
     }
 
-    let data1 = 8 as *mut &[u8];
+    let data1 = 4096 as *mut &[u8];
 
     unsafe { *data1 = bitmap };
 
     let data2 = ((x as u64) << 48) | ((y as u64) << 32) | ((color as u64) << 16) | ((width as u64) << 8) | height as u64;
     let data3 = scale as u64;
-    
-    if data1 as u64 >= 4096 {
-        return DrawBitmapStatus::InvalidStart;
-    }
 
     let status = send(Message {
         pid: 1,
         data0: 0x10,
-        data1: data1 as u64,
+        data1: 0,
         data2,
         data3,
     });

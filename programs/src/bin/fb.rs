@@ -11,10 +11,7 @@ pub unsafe extern "C" fn _start() {
 
     println!("Ragnarok be upon ye!");
 
-    for i in 0..descriptor.height as isize {
-        let ptr = fb_ptr.offset(i * descriptor.pitch as isize);
-        ptr.write_bytes(0xFF, descriptor.pitch as usize);
-    }
+    fb_ptr.offset(400 * descriptor.bpp as isize + 100 * descriptor.pitch as isize).write(0xFFFF);
 
     exit();
 }

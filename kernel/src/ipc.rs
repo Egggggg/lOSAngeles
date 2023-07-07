@@ -35,21 +35,21 @@ impl MessageHandler {
         }
     }
 
-    pub fn receive_message(&self, from: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> MessageState {
+    pub fn receive_message(&mut self, from: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> MessageState {
         match &self.state {
             MessageHandlerState::Receiving(whitelist) => {
                 if whitelist.len() > 0 && !whitelist.contains(&from) {
-                    return MessageState::Blocked;
+                    MessageState::Blocked
+                } else {
+                    MessageState::Receivable(ReturnRegs {
+                        rax: 0,
+                        rdi: from,
+                        rsi: data0,
+                        rdx: data1,
+                        r8: data2,
+                        r9: data3,
+                    })    
                 }
-
-                MessageState::Receivable(ReturnRegs {
-                    rax: 0,
-                    rdi: from,
-                    rsi: data0,
-                    rdx: data1,
-                    r8: data2,
-                    r9: data3,
-                })
             }
             _ => MessageState::Waiting,
         }
@@ -63,7 +63,7 @@ impl MessageHandler {
 /// Sends a message from the process with PID `from` to the process with PID `to`
 /// 
 /// Returns `None` if the recipient doesn't exist
-pub fn send_message(sender: Pid, message: Message, scheduler: &mut Scheduler)  -> Option<MessageState> {
+pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler)  -> Option<MessageState> {
     let Message { pid, data0, data1, data2, data3 } = message;
 
     let processes = &mut scheduler.queue;
@@ -72,12 +72,22 @@ pub fn send_message(sender: Pid, message: Message, scheduler: &mut Scheduler)  -
         return None;
     };
 
-    match recipient.message_handler.receive_message(sender, data0, data1, data2, data3) {
+    match recipient.message_handler.receive_message(sender_pid, data0, data1, data2, data3) {
         MessageState::Receivable(regs) => {
             recipient.reg_state = regs;
             recipient.exec_state = ExecState::Running;
+            recipient.message_handler.state = MessageHandlerState::Idle;
+            let pid = recipient.pid;
 
-            serial_println!("Message received by {}", recipient.pid);
+            // stop borrowing `processes` as mutable
+            let recipient = 0;
+        
+            let sender = processes.iter_mut().find(|p| p.pid == sender_pid).unwrap();
+
+            sender.exec_state = ExecState::Running;
+            sender.message_handler.state = MessageHandlerState::Idle;
+
+            serial_println!("Message received by {}", pid);
             serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, data2, data3);
             serial_println!("{:?}", regs);
 
@@ -85,7 +95,7 @@ pub fn send_message(sender: Pid, message: Message, scheduler: &mut Scheduler)  -
         },
         e => {
             serial_println!("Send failed: {:?}", e);
-            let sender = processes.iter_mut().find(|p| p.pid == sender).unwrap();
+            let sender = processes.iter_mut().find(|p| p.pid == sender_pid).unwrap();
             
             sender.exec_state = ExecState::WaitingIpc;
             sender.message_handler.state = MessageHandlerState::Sending(message);

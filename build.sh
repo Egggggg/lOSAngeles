@@ -9,15 +9,15 @@ cd programs
 cargo build --target x86_64-angeles.json --bin $1
 cd ..
 
-mkdir -p target/servers
-cp target/x86_64-angeles/debug/graphics.elf target/servers/graphics.elf
+mkdir -p target/programs
+cp target/x86_64-angeles/debug/$1.elf target/programs/current1.elf
 
 cd graphics
 cargo build --target x86_64-angeles.json
 cd ..
 
-mkdir -p target/programs
-cp target/x86_64-angeles/debug/$1.elf target/programs/current1.elf
+mkdir -p target/servers
+cp target/x86_64-angeles/debug/graphics.elf target/servers/graphics.elf
 
 echo "Building kernel"
 

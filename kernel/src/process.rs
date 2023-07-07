@@ -25,6 +25,7 @@ pub struct Scheduler {
     pub next_pid: AtomicU64,
 }
 
+#[derive(Clone, Debug)]
 pub struct Process {
     pub pid: Pid,
     pub cr3: PhysFrame,
@@ -132,6 +133,8 @@ impl Scheduler {
             1 => return self.queue.get(0),
             _ => {},
         }
+
+        serial_println!("{:#?}", self.queue);
 
         for _ in 1..self.queue.len() {
             self.queue.rotate_left(1);

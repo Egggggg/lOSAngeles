@@ -20,6 +20,7 @@ impl From<u64> for DrawBitmapStatus {
             11 => TooTall,
             12 => InvalidLength,
             13 => InvalidStart,
+            14 => NotFriends,
             _ => Invalid
         }
     }

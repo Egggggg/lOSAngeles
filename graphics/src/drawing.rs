@@ -33,11 +33,15 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
 
     println!("{:#018X}", FB.address);
 
+    println!("{}x{}", width, height);
+    println!("({}, {})", x, y);
+    println!("x{}", scale);
+
     for row in 0..height {
         for col in 0..width {
             let byte = bitmap[row * width + col];
             let col_offset = col * scale * 8;
-            
+
             for bit in 0..8 {
                 let pixel = (byte >> (7 - bit)) & 1;
 
@@ -47,6 +51,9 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
                         let mut current = unsafe { base.offset(offset as isize) };
 
                         for _ in 0..scale {
+                            // println!("({}, {}).{}", col, row, bit);
+                            // println!("{:#018b}", color);
+                            // println!("{:p}", current);
                             unsafe {
                                 current.write(color);
                                 current = current.offset(1);

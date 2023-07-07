@@ -129,11 +129,6 @@ impl SharedMemory {
             unsafe { mapper.map_to(pair.1, *pair.0, flags, frame_allocator).unwrap().flush() };
         }
 
-        let mapper = memory::get_mapper();
-        let translation: PhysFrame<Size4KiB> = mapper.translate_page(Page::containing_address(VirtAddr::new(2048))).unwrap();
-
-        serial_println!("0: {:#018X?}", translation);
-
         region.members.push(pid);
 
         Ok(())

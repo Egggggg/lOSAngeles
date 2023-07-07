@@ -1,12 +1,12 @@
 use core::sync::atomic::AtomicU64;
-use std::{ipc::{Pid, Message}, memshare::{create_memshare, ShareId, CreateShareError}, dev::FramebufferDescriptor, sys_graphics::DrawBitmapStatus};
+use std::{ipc::{Pid, Message}, memshare::{create_memshare, ShareId, CreateShareError}, dev::FramebufferDescriptor, sys_graphics::DrawBitmapStatus, println};
 
 use alloc::{collections::BTreeMap, slice};
 use core::sync::atomic::Ordering;
 
 use crate::drawing;
 
-static NEXT_SHARE: AtomicU64 = AtomicU64::new(8);
+static NEXT_SHARE: AtomicU64 = AtomicU64::new(4096);
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u64)]
@@ -65,9 +65,11 @@ pub fn share(regions: &mut BTreeMap<Pid, (ShareId, u64)>, pid: Pid) -> Message{
 }
 
 pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) -> Message {
-    let Message { pid, data0, data1, data2, data3: _ } = request;
+    let Message { pid, data0: _, data1, data2, data3 } = request;
 
-    if data0 >= 4096 {
+    if data1 >= 4096 {
+        println!("{}", data1);
+
         return Message {
             pid,
             data0: DrawBitmapStatus::InvalidStart as _,
@@ -83,18 +85,22 @@ pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) ->
         };
     };
     let region_ptr = region_start.1 as *const u8;
-    let bitmap_ptr = unsafe { region_ptr.offset(data0 as isize) };
+    let bitmap_ptr = unsafe { region_ptr.offset(data1 as isize) };
 
-    let data1_bytes = data1.to_le_bytes();
-    let x = data1_bytes[6] as u16 | ((data1_bytes[7] as u16) << 8);
-    let y = data1_bytes[4] as u16 | ((data1_bytes[5] as u16) << 8);
-    let color = data1_bytes[2] as u16 | ((data1_bytes[3] as u16) << 8);
-    let width = data1_bytes[1] as u8;
-    let height = data1_bytes[0] as u8;
+    println!("{:p}", bitmap_ptr);
 
-    let scale = (data2 & 0xFF) as u8;
+    let data2_bytes = data2.to_le_bytes();
+    let x = data2_bytes[6] as u16 | ((data2_bytes[7] as u16) << 8);
+    let y = data2_bytes[4] as u16 | ((data2_bytes[5] as u16) << 8);
+    let color = data2_bytes[2] as u16 | ((data2_bytes[3] as u16) << 8);
+    let width = data2_bytes[1] as u8;
+    let height = data2_bytes[0] as u8;
+
+    let scale = (data3 & 0xFF) as u8;
 
     let bitmap = unsafe { slice::from_raw_parts(bitmap_ptr, width as usize * height as usize) };
+
+    println!("{:#04X?}", bitmap);
 
     let x_max = drawing::FB.width;
     let y_max = drawing::FB.height;
