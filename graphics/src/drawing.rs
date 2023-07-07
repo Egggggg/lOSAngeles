@@ -1,4 +1,4 @@
-use std::dev::{FramebufferDescriptor, request_fb};
+use std::{dev::{FramebufferDescriptor, request_fb}, println};
 
 use lazy_static::lazy_static;
 
@@ -30,6 +30,8 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
     // `fb.bpp` is bits per pixel, `fb.pitch` is bytes per scanline
     let pixel_offset = (x + y * (FB.pitch as usize / 2)) as isize;
     let mut base: *mut u16 = unsafe { (FB.address as *mut u16).offset(pixel_offset) };
+
+    println!("{:#018X}", FB.address);
 
     for row in 0..height {
         for col in 0..width {

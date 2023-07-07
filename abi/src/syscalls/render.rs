@@ -1,20 +1,25 @@
 #[derive(Debug, Clone, Copy)]
-#[repr(u8)]
+#[repr(u64)]
 pub enum DrawBitmapStatus {
     Success = 0,
-    TooWide,
-    TooTall,
-    InvalidLength = 30,
+    TooWide = 10,
+    TooTall = 11,
+    InvalidLength = 12,
+    InvalidStart = 13,
+    NotFriends = 14,
     Invalid = 255,
 }
 
-impl From<u8> for DrawBitmapStatus {
-    fn from(value: u8) -> Self {
+// TODO: change this to TryFrom
+impl From<u64> for DrawBitmapStatus {
+    fn from(value: u64) -> Self {
         use DrawBitmapStatus::*;
         match value {
             0 => Success,
-            1 => TooWide,
-            2 => TooTall,
+            10 => TooWide,
+            11 => TooTall,
+            12 => InvalidLength,
+            13 => InvalidStart,
             _ => Invalid
         }
     }

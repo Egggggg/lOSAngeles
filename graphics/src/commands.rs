@@ -1,12 +1,12 @@
 use core::sync::atomic::AtomicU64;
-use std::{ipc::{Pid, Message}, memshare::{create_memshare, ShareId, CreateShareError}, dev::FramebufferDescriptor};
+use std::{ipc::{Pid, Message}, memshare::{create_memshare, ShareId, CreateShareError}, dev::FramebufferDescriptor, sys_graphics::DrawBitmapStatus};
 
 use alloc::{collections::BTreeMap, slice};
 use core::sync::atomic::Ordering;
 
 use crate::drawing;
 
-static NEXT_SHARE: AtomicU64 = AtomicU64::new(0);
+static NEXT_SHARE: AtomicU64 = AtomicU64::new(8);
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u64)]
@@ -58,27 +58,27 @@ pub fn share(regions: &mut BTreeMap<Pid, (ShareId, u64)>, pid: Pid) -> Message{
 
     Message {
         pid,
-        data0: id,
+        data0: 0,
+        data1: id,
         ..Default::default()
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u8)]
-pub enum DrawResponse {
-    Success = 0,
-    TooWide = 10,
-    TooTall = 11,
-    NotFriends = 12,
 }
 
 pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) -> Message {
     let Message { pid, data0, data1, data2, data3: _ } = request;
 
+    if data0 >= 4096 {
+        return Message {
+            pid,
+            data0: DrawBitmapStatus::InvalidStart as _,
+            ..Default::default()
+        };
+    }
+
     let Some(region_start) = regions.get(&pid) else {
         return Message {
             pid,
-            data0: DrawResponse::NotFriends as _,
+            data0: DrawBitmapStatus::NotFriends as _,
             ..Default::default()
         };
     };
@@ -103,13 +103,13 @@ pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) ->
     if x as u64 + width as u64 * 8 >= x_max {
         return Message {
             pid,
-            data0: DrawResponse::TooWide as u64,
+            data0: DrawBitmapStatus::TooWide as u64,
             ..Default::default()
         };
     } else if y as u64 + height as u64 >= y_max {
         return Message {
             pid,
-            data0: DrawResponse::TooTall as u64,
+            data0: DrawBitmapStatus::TooTall as u64,
             ..Default::default()
         };
     }
@@ -118,7 +118,7 @@ pub fn draw_bitmap(regions: &BTreeMap<Pid, (ShareId, u64)>, request: Message) ->
 
     Message {
         pid,
-        data0: DrawResponse::Success as u64,
+        data0: DrawBitmapStatus::Success as u64,
         ..Default::default()
     }
 }

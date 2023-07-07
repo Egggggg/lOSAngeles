@@ -3,7 +3,6 @@ use alloc::fmt;
 
 pub use abi::render::DrawBitmapStatus;
 
-
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {
         return DrawBitmapStatus::InvalidLength;
@@ -29,7 +28,7 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height:
         );
     }
 
-    (out as u8).into()
+    out.into()
 }
 
 pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
@@ -81,14 +80,14 @@ pub fn _print(args: ::core::fmt::Arguments) {
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
-        $crate::graphics::_print(format_args!($($arg)*))
+        $crate::sys_graphics::_print(format_args!($($arg)*))
     };
 }
 
 /// Prints to the host through the serial interface, appending a newline
 #[macro_export]
 macro_rules! println {
-    () => ($crate::graphics::_print!("\n"));
+    () => ($crate::sys_graphics::_print!("\n"));
     ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
     ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
 }

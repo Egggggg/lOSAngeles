@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use std::{exit, serial_print, graphics::{draw_bitmap, draw_string, DrawBitmapStatus}, println, serial_println};
+use std::{exit, serial_print, graphics::{draw_bitmap, DrawBitmapStatus}, sys_graphics::draw_string, println, serial_println};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

@@ -6,7 +6,7 @@
 //!     RAX - Status code
 //!     RDI, RSI, RDX, R8, R9, R10 - Return values, first to last
 pub mod serial;
-pub mod graphics;
+pub mod sys_graphics;
 pub mod ipc;
 pub mod memshare;
 pub mod dev;
@@ -28,6 +28,7 @@ pub fn getpid() -> u64 {
     unsafe {
         asm!(
             "mov rax, $0x40",
+            "mov rdi, $0x00",
             "syscall",
             lateout("rdi") rdi,
         );

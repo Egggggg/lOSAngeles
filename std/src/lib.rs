@@ -3,12 +3,14 @@
 
 mod syscalls;
 mod allocator;
+mod servers;
 
 extern crate alloc;
 
 use core::panic::PanicInfo;
 
 pub use syscalls::*;
+pub use servers::*;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {

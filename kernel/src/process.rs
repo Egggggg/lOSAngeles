@@ -58,6 +58,11 @@ pub enum Program {
     Graphics
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum QueryError {
+    NotExists,
+}
+
 impl Scheduler {
     pub unsafe fn add_new(&mut self, program: Program, privileged: bool) {
         let old_cr3 = Cr3::read();
@@ -70,10 +75,15 @@ impl Scheduler {
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
-        let entry = {
-            
-            include_bytes!("../../target/programs/current1.elf");
-            elf::load_elf(contents).unwrap()
+        let entry = match program {
+            Program::Current1 => {
+                let contents = include_bytes!("../../target/programs/current1.elf");
+                elf::load_elf(contents).unwrap()
+            }
+            Program::Graphics => {
+                let contents = include_bytes!("../../target/servers/graphics.elf");
+                elf::load_elf(contents).unwrap()
+            }
         };
     
         let stack_start = VirtAddr::new(STACK);
@@ -131,17 +141,22 @@ impl Scheduler {
                 (process.exec_state, process.pid)
             };
 
+            serial_println!("Checking process {}", pid);
+
             match exec_state {
                 ExecState::WaitingIpc => {
+                    serial_println!("   Process is waiting on IPC");
                     let status = ipc::refresh_ipc(pid, self);
 
                     if status {
                         self.get_current().unwrap().exec_state = ExecState::Running;
+                        serial_println!("   Resuming process");
                         return self.queue.get(0);
                     }
 
                 }
                 _ => {
+                    serial_println!("Resuming process {}", pid);
                     return self.queue.get(0);
                 },
             }
@@ -150,8 +165,13 @@ impl Scheduler {
         panic!("Deadlock");
     }
 
-    pub unsafe fn get_current(&mut self) -> Option<&mut Process> {
+    pub  fn get_current(&mut self) -> Option<&mut Process> {
         self.queue.get_mut(0)
+    }
+
+    pub fn remove(&mut self, pid: Pid) -> Result<(), QueryError> {
+        self.queue.remove(self.queue.iter().position(|p| p.pid == pid).ok_or(QueryError::NotExists)?);
+        Ok(())
     }
 }
 
