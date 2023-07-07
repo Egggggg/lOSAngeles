@@ -39,9 +39,14 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height:
         return DrawBitmapStatus::InvalidLength;
     }
 
-    let data1 = 4096 as *mut &[u8];
+    let mut data1 = 4096 as *mut u8;
 
-    unsafe { *data1 = bitmap };
+    for byte in bitmap {
+        unsafe {
+            *data1 = *byte;
+            data1 = data1.offset(1);
+        }
+    }
 
     let data2 = ((x as u64) << 48) | ((y as u64) << 32) | ((color as u64) << 16) | ((width as u64) << 8) | height as u64;
     let data3 = scale as u64;

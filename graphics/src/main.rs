@@ -13,8 +13,6 @@ use std::{ipc::{receive, send, Pid}, println, serial_println, exit};
 use alloc::collections::BTreeMap;
 use commands::Command;
 
-use crate::drawing::draw_bitmap;
-
 type ShareId = u64;
 
 #[no_mangle]
