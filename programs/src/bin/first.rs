@@ -4,7 +4,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use std::{exit, serial_print, graphics::{draw_bitmap, DrawBitmapStatus}, sys_graphics::draw_string, println, serial_println};
+use std::{exit, serial_print, graphics::{draw_bitmap, DrawBitmapStatus, draw_string}, println, serial_println};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -48,11 +48,18 @@ pub unsafe extern "C" fn _start() {
 
     println!("total of e: {}", total);
 
-    for x in 0..16 {
-        for y in 0..16 {
-            draw_bitmap(&[0x80], x * 32, y * 32, 0b11111_111111_00000, 1, 1, 24);
-        }
-    }
+    let bmp = draw_bitmap(&[
+        0b10101010, 0b10101010, 
+        0b01010101, 0b01010101, 
+        0b10101010, 0b10101010, 
+        0b01010101, 0b01010101, 
+        0b10101010, 0b10101010, 
+        0b01010101, 0b01010101, 
+        0b10101010, 0b10101010, 
+        0b01010101, 0b01010101,
+    ], 0, 0, 0b11111_111111_00000, 2, 8, 24);
+
+    println!("{:?}", bmp);
 
     exit();
 }

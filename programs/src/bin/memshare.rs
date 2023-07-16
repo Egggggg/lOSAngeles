@@ -11,7 +11,7 @@ use std::{
     getpid, exit, println,
     ipc::{send, receive},
     memshare::{join_memshare, create_memshare, CreateShareStatus, JoinShareStatus}, 
-    ipc::{Message}
+    ipc::Message
 };
 
 #[no_mangle]

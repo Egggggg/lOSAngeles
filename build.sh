@@ -44,36 +44,38 @@ make -C limine
 # Install the Limine BIOS stages onto the image.
 ./limine/limine-deploy target/disk.img
  
+echo "sudo time :()"
+
 # Mount the loopback device.
 # Needs root
-USED_LOOPBACK=$(losetup -Pf --show target/disk.img)
+USED_LOOPBACK=$(sudo losetup -Pf --show target/disk.img)
  
 # Format the ESP partition as FAT32.
 # Needs root
-mkfs.fat -F 32 ${USED_LOOPBACK}p1
+sudo mkfs.fat -F 32 ${USED_LOOPBACK}p1
  
 # Mount the partition itself.
 mkdir -p img_mount
 # Needs root
-mount ${USED_LOOPBACK}p1 img_mount
+sudo mount ${USED_LOOPBACK}p1 img_mount
  
 # Copy the relevant files over.
 # Needs root ?
-mkdir -p img_mount/EFI/BOOT
+sudo mkdir -p img_mount/EFI/BOOT
 # Needs root ??
-cp -v target/x86_64-angeles/debug/losangeles.elf limine.cfg limine/limine.sys img_mount/
+sudo cp -v target/x86_64-angeles/debug/losangeles.elf limine.cfg limine/limine.sys img_mount/
 # Why does this need root ???
-cp -v limine/BOOTX64.EFI img_mount/EFI/BOOT/
+sudo cp -v limine/BOOTX64.EFI img_mount/EFI/BOOT/
  
 # So it has time to stop being busy
-sleep 0.25
+sleep 0.35
 
 # Sync system cache and unmount partition and loopback device.
 sync
 # Needs root
-umount img_mount
+sudo umount img_mount
 # Needs root
-losetup -d ${USED_LOOPBACK}
+sudo losetup -d ${USED_LOOPBACK}
 
 chmod 777 target/disk.img
 

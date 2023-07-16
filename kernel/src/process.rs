@@ -203,9 +203,18 @@ impl ReturnRegs {
 }
 
 pub fn run_next() -> ! {
-    let (cr3, pc, state) = unsafe {
+    {
         let mut scheduler = SCHEDULER.write();
-        let process = scheduler.next().unwrap();
+        unsafe { scheduler.next().unwrap() };
+    }
+
+    run_process();
+}
+
+pub fn run_process() -> ! {
+    let (cr3, pc, state) = unsafe {
+        let mut scheduler = SCHEDULER.read();
+        let process = &scheduler.queue[0];
         (process.cr3, process.pc, process.reg_state)
     };
 

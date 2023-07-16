@@ -5,7 +5,6 @@ pub use abi::render::DrawBitmapStatus;
 use crate::{ipc::{receive, send_payload}, println};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height: u16, scale: u8) -> DrawBitmapStatus {
-    println!("Drawing");
     if width as usize * height as usize != bitmap.len() {
         println!("InvalidLength locally");
         return DrawBitmapStatus::InvalidLength;

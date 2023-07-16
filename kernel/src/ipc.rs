@@ -89,8 +89,8 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
             sender.exec_state = ExecState::Running;
             sender.message_handler.state = MessageHandlerState::Idle;
 
-            serial_println!("Message received by {}", pid);
-            serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, data2, data3);
+            // serial_println!("Message received by {}", pid);
+            // serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, data2, data3);
 
             Some(MessageState::Received)
         },
@@ -132,8 +132,6 @@ pub fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Sc
         return Err(SendStatus::BufferTooSmall);
     }
 
-
-
     match recipient.message_handler.receive_message(sender_pid, data0, data1, RESPONSE_BUFFER, payload_len) {
         MessageState::Receivable(regs) => {
             recipient.reg_state = regs;
@@ -165,8 +163,8 @@ pub fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Sc
 
             unsafe { Cr3::write(sender.cr3, Cr3Flags::empty()) };
 
-            serial_println!("Payload message received by {}", pid);
-            serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, payload, payload_len);
+            // serial_println!("Payload message received by {}", pid);
+            // serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, payload, payload_len);
             
             Ok(MessageState::Received)
         },

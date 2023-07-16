@@ -34,7 +34,6 @@ pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
 
     let data0_bytes = data0.to_le_bytes();
-    println!("data0: {:#04X?}", data0_bytes);
 
     let x = data0_bytes[5] as u16 | ((data0_bytes[6] as u16) << 8);
     let y = data0_bytes[3] as u16 | ((data0_bytes[4] as u16) << 8);

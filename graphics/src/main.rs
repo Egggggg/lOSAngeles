@@ -22,7 +22,7 @@ pub unsafe extern "C" fn _start() {
     loop {
         let request = receive(&[]);
 
-        println!("[GRAPHICS] Received {:#0X?}", request);
+        // println!("[GRAPHICS] Received {:#0X?}", request);
 
         let opcode = (request.data0 >> 56) & 0xFF;
 
@@ -38,7 +38,7 @@ pub unsafe extern "C" fn _start() {
             // continue;
         };
 
-        println!("{:?} ({:#04X})", command, opcode);
+        // println!("{:?} ({:#04X})", command, opcode);
 
         let response = match command  {
             Command::draw_bitmap => commands::draw_bitmap(request.into()),
