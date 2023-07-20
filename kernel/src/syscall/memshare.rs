@@ -1,7 +1,7 @@
-use alloc::slice;
+use alloc::{slice, vec::Vec};
 use x86_64::{structures::paging::{Page, Size4KiB}, VirtAddr};
 
-use crate::{ipc, process, serial_println};
+use crate::{ipc, process, serial_println, syscall::build_user_vec};
 use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareResponse};
 
 
@@ -16,8 +16,12 @@ pub unsafe fn sys_create_memshare(start: u64, end: u64, whitelist_start: u64, wh
 
     let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
 
-    let whitelist_ptr = whitelist_start as *const u64;
-    let whitelist = slice::from_raw_parts(whitelist_ptr, whitelist_len as usize).to_vec();
+    let Ok(whitelist): Result<Vec<u64>, _> = build_user_vec(whitelist_start, whitelist_len as usize) else {
+        return CreateShareResponse {
+            status: CreateShareStatus::OutOfBounds,
+            id: None,
+        };
+    };
 
     serial_println!("Creating memshare");
 
@@ -38,8 +42,9 @@ pub unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: 
 
     let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
 
-    let blacklist_ptr = blacklist_start as *const u64;
-    let blacklist = slice::from_raw_parts(blacklist_ptr, blacklist_len as usize).to_vec();
+    let Ok(blacklist): Result<Vec<u64>, _> = build_user_vec(blacklist_start, blacklist_len as usize) else {
+        return JoinShareStatus::OutOfBounds;
+    };
 
     serial_println!("Joining memshare");
 
@@ -47,6 +52,6 @@ pub unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: 
         Ok(_) => {
             JoinShareStatus::Success
         },
-        Err(e) => e.into(),
+        Err(e) => e,
     }
 }

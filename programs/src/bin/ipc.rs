@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use std::{getpid, ipc::{receive, send, Message}};
+use std::{getpid, ipc::{receive, send_message, Message}};
 
 extern crate alloc;
 
@@ -13,13 +13,13 @@ pub unsafe extern "C" fn _start() {
         let mut counter = 0;
         loop {
             receive(&[2]);
-            send(Message { pid: 2, data0: counter, ..Default::default() });
+            send_message(Message { pid: 2, data0: counter, ..Default::default() });
             counter += 1
         }
     } else {
         let mut counter = u64::MAX;
         loop {
-            send(Message { pid: 1, data0: counter, ..Default::default() });
+            send_message(Message { pid: 1, data0: counter, ..Default::default() });
             receive(&[1]);
             counter -= 1;
         }

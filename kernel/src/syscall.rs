@@ -1,8 +1,9 @@
 use core::arch::asm;
+use alloc::{slice, vec::Vec};
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
 
 use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER, ResponseBuffer}, syscall::dev::sys_request_fb};
-use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE}};
+use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE, ReceiveStatus}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -138,8 +139,36 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::receive => {
-            ipc::sys_receive(rdi, rsi);
-            sys_yield(rcx);
+            let status = ipc::sys_receive(rdi, rsi);
+
+            match status {
+                ReceiveStatus::Success => {
+                    sys_yield(rcx);
+                }
+                _ => ReturnRegs {
+                    rax: status as u64,
+                    ..Default::default()
+                }
+            }
+        }
+        Syscall::notify => {
+            let status = ipc::sys_notify(rdi, rsi, rdx, r8, r9);
+
+            ReturnRegs {
+                rax: status as u64,
+                ..Default::default()
+            }
+        }
+        Syscall::read_mailbox => {
+            ipc::sys_read_mailbox()
+        }
+        Syscall::config_mailbox => {
+            let status = ipc::sys_config_mailbox(rdi, rsi, rdx);
+
+            ReturnRegs {
+                rax: status as u64,
+                ..Default::default()
+            }
         }
         Syscall::send_payload => {
             let Some(status) = ipc::sys_send_payload(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
@@ -306,4 +335,19 @@ fn sys_yield(rcx: *const ()) -> ! {
     }
 
     process::run_next();
+}
+
+/// Builds a Vec from a start and a length
+/// 
+/// Returns an error if `start` is in kernel memory
+pub unsafe fn build_user_vec<T>(start: u64, len: usize) -> Result<Vec<T>, ()>
+where
+    T: Clone
+{
+    if start >= 0xffff_8000_0000_0000 {
+        return Err(());
+    }
+
+    let ptr = start as *const T;
+    Ok(slice::from_raw_parts(ptr, len as usize).to_vec())
 }

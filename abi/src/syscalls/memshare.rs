@@ -1,5 +1,7 @@
 use crate::syscalls::InvalidStatusCode;
 
+use super::Status;
+
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 pub enum CreateShareStatus {
@@ -28,6 +30,14 @@ impl TryFrom<u64> for CreateShareStatus {
         }
     }
 }
+
+impl From<CreateShareStatus> for u8 {
+    fn from(value: CreateShareStatus) -> Self {
+        value as u8
+    }
+}
+
+impl Status for CreateShareStatus {}
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u64)]
@@ -64,6 +74,14 @@ impl TryFrom<u64> for JoinShareStatus {
     }
 }
 
+impl From<JoinShareStatus> for u8 {
+    fn from(value: JoinShareStatus) -> Self {
+        value as u8
+    }
+}
+
+impl Status for JoinShareStatus {}
+
 pub type ShareId = u64;
 
 #[derive(Clone, Copy, Debug)]
@@ -78,65 +96,65 @@ impl From<CreateShareStatus> for CreateShareResponse {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[repr(u64)]
-pub enum CreateShareError {
-    UnalignedStart = 10,
-    UnalignedEnd = 11,
-    OutOfBounds = 13,
-}
+// #[derive(Clone, Copy, Debug)]
+// #[repr(u64)]
+// pub enum CreateShareError {
+//     UnalignedStart = 10,
+//     UnalignedEnd = 11,
+//     OutOfBounds = 13,
+// }
 
-impl TryFrom<CreateShareStatus> for CreateShareError {
-    type Error = InvalidStatusCode;
+// impl TryFrom<CreateShareStatus> for CreateShareError {
+//     type Error = InvalidStatusCode;
 
-    fn try_from(value: CreateShareStatus) -> Result<Self, Self::Error> {
-        match value {
-            CreateShareStatus::Success => Err(InvalidStatusCode),
-            CreateShareStatus::UnalignedStart => Ok(Self::UnalignedStart),
-            CreateShareStatus::UnalignedEnd => Ok(Self::UnalignedEnd),
-            CreateShareStatus::OutOfBounds => Ok(Self::OutOfBounds),
-        }
-    }
-}
+//     fn try_from(value: CreateShareStatus) -> Result<Self, Self::Error> {
+//         match value {
+//             CreateShareStatus::Success => Err(InvalidStatusCode),
+//             CreateShareStatus::UnalignedStart => Ok(Self::UnalignedStart),
+//             CreateShareStatus::UnalignedEnd => Ok(Self::UnalignedEnd),
+//             CreateShareStatus::OutOfBounds => Ok(Self::OutOfBounds),
+//         }
+//     }
+// }
 
-impl From<CreateShareError> for CreateShareStatus {
-    fn from(value: CreateShareError) -> Self {
-        match value {
-            CreateShareError::UnalignedStart => Self::UnalignedStart,
-            CreateShareError::UnalignedEnd => Self::UnalignedEnd,
-            CreateShareError::OutOfBounds => Self::OutOfBounds,
-        }
-    }
-}
+// impl From<CreateShareError> for CreateShareStatus {
+//     fn from(value: CreateShareError) -> Self {
+//         match value {
+//             CreateShareError::UnalignedStart => Self::UnalignedStart,
+//             CreateShareError::UnalignedEnd => Self::UnalignedEnd,
+//             CreateShareError::OutOfBounds => Self::OutOfBounds,
+//         }
+//     }
+// }
 
-impl From<CreateShareError> for CreateShareResponse {
-    fn from(value: CreateShareError) -> Self {
-        let status: CreateShareStatus = value.into();
-        status.into()
-    }
-}
+// impl From<CreateShareError> for CreateShareResponse {
+//     fn from(value: CreateShareError) -> Self {
+//         let status: CreateShareStatus = value.into();
+//         status.into()
+//     }
+// }
 
-#[derive(Clone, Copy, Debug)]
-pub enum JoinShareError {
-    NotExists,
-    OutOfBounds,
-    AlreadyMapped,
-    TooSmall,
-    TooLarge,
-    NotAllowed,
-    BlacklistClash,
-}
+// #[derive(Clone, Copy, Debug)]
+// pub enum JoinShareError {
+//     NotExists,
+//     OutOfBounds,
+//     AlreadyMapped,
+//     TooSmall,
+//     TooLarge,
+//     NotAllowed,
+//     BlacklistClash,
+// }
 
-impl From<JoinShareError> for JoinShareStatus {
-    fn from(value: JoinShareError) -> Self {
-        match value {
-            JoinShareError::BlacklistClash => Self::BlacklistClash,
-            JoinShareError::OutOfBounds => Self::OutOfBounds,
-            JoinShareError::TooSmall => Self::TooSmall,
-            JoinShareError::TooLarge => Self::TooLarge,
-            JoinShareError::NotExists => Self::NotExists,
-            JoinShareError::NotAllowed => Self::NotAllowed,
-            JoinShareError::AlreadyMapped => Self::AlreadyMapped,
-        }
-    }
-}
+// impl From<JoinShareError> for JoinShareStatus {
+//     fn from(value: JoinShareError) -> Self {
+//         match value {
+//             JoinShareError::BlacklistClash => Self::BlacklistClash,
+//             JoinShareError::OutOfBounds => Self::OutOfBounds,
+//             JoinShareError::TooSmall => Self::TooSmall,
+//             JoinShareError::TooLarge => Self::TooLarge,
+//             JoinShareError::NotExists => Self::NotExists,
+//             JoinShareError::NotAllowed => Self::NotAllowed,
+//             JoinShareError::AlreadyMapped => Self::AlreadyMapped,
+//         }
+//     }
+// }

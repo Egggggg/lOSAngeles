@@ -1,16 +1,17 @@
 pub mod memshare;
 
-use abi::ipc::{Message, PayloadMessage, SendStatus, RESPONSE_BUFFER};
-use alloc::{vec::Vec, slice, borrow::ToOwned};
+use abi::ipc::{Message, PayloadMessage, SendStatus, NotifyStatus, RESPONSE_BUFFER, ReadMailboxStatus};
+use alloc::{vec::Vec, slice, borrow::ToOwned, collections::VecDeque};
 use x86_64::registers::control::{Cr3, Cr3Flags};
 
-use crate::{process::{Pid, ReturnRegs, SCHEDULER, ExecState, Scheduler}, serial_println, println};
+use crate::{process::{Pid, ReturnRegs, SCHEDULER, ExecState, Scheduler, Process}, serial_println, println, syscall::build_user_vec};
 
 pub use memshare::*;
 
 #[derive(Clone, Debug)]
 pub struct MessageHandler {
     pub state: MessageHandlerState,
+    pub mailbox: Mailbox,
 }
 
 #[derive(Clone, Debug)]
@@ -19,6 +20,13 @@ pub enum MessageHandlerState {
     Sending(Message),
     SendingPayload(PayloadMessage),
     Receiving(Vec<Pid>),
+}
+
+#[derive(Clone, Debug)]
+pub struct Mailbox {
+    pub notifs: VecDeque<Message>,
+    pub whitelist: Vec<Pid>,
+    pub enabled: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -30,10 +38,20 @@ pub enum MessageState {
     InvalidRecipient,
 }
 
+impl Mailbox {
+    pub fn new() -> Self {
+        Self {
+            notifs: VecDeque::new(),
+            whitelist: Vec::new(),
+            enabled: false,
+        }
+    }
+}
 impl MessageHandler {
     pub fn new() -> Self {
         Self {
-            state: MessageHandlerState::Idle
+            state: MessageHandlerState::Idle,
+            mailbox: Mailbox::new(),
         }
     }
 
@@ -117,7 +135,61 @@ pub fn receive_message(recipient: Pid, whitelist: Vec<Pid>) {
     process.exec_state = ExecState::WaitingIpc;
 }
 
-pub fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Scheduler) -> Result<MessageState, SendStatus> {
+/// Sends a notification to the target process.
+pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> NotifyStatus {
+    let processes = &mut scheduler.queue;
+
+    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == message.pid) else {
+        return NotifyStatus::InvalidRecipient;
+    };
+
+    if !recipient.message_handler.mailbox.enabled {
+        return NotifyStatus::Disabled;
+    }
+
+    if recipient.message_handler.mailbox.whitelist.len() > 0 && !recipient.message_handler.mailbox.whitelist.contains(&sender_pid) {
+        return NotifyStatus::Blocked;
+    }
+
+    serial_println!("   {:?}", message);
+
+    recipient.message_handler.mailbox.notifs.push_back(message);
+    NotifyStatus::Success
+}
+
+pub fn read_mailbox(recipient: &mut Process) -> ReturnRegs {
+    if !recipient.message_handler.mailbox.enabled {
+        return ReturnRegs {
+            rax: ReadMailboxStatus::Disabled as u64,
+            ..Default::default()
+        }
+    }
+
+    let notifs = &mut recipient.message_handler.mailbox.notifs;
+    
+    if notifs.len() == 0 {
+        return ReturnRegs {
+            rax: ReadMailboxStatus::NoMessages as u64,
+            ..Default::default()
+        };
+    }
+
+    let message = notifs.pop_front().unwrap();
+
+    let rax = if notifs.len() > 0 { ReadMailboxStatus::MoreMessages } else { ReadMailboxStatus::OneMessage } as u64;
+
+    ReturnRegs {
+        rax,
+        rdi: message.pid,
+        rsi: message.data0,
+        rdx: message.data1,
+        r8: message.data2,
+        r9: message.data3,
+    }
+}
+
+
+pub unsafe fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Scheduler) -> Result<MessageState, SendStatus> {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = message;
 
     let processes = &mut scheduler.queue;
@@ -138,7 +210,10 @@ pub fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Sc
             recipient.exec_state = ExecState::Running;
             recipient.message_handler.state = MessageHandlerState::Idle;
 
-            let payload_slice = unsafe { slice::from_raw_parts(payload as *const u8, payload_len as usize) }.to_owned();
+
+            let Ok(payload_slice): Result<Vec<u8>, _> = build_user_vec(payload, payload_len as usize) else {
+                return Err(SendStatus::InvalidPayload);
+            };
 
             unsafe { Cr3::write(recipient.cr3, Cr3Flags::empty()) };
 

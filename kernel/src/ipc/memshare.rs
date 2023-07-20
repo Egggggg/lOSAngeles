@@ -1,4 +1,4 @@
-use abi::memshare::{ShareId, CreateShareError, JoinShareError};
+use abi::memshare::{ShareId, CreateShareStatus, JoinShareStatus};
 use alloc::{vec::Vec, collections::BTreeMap};
 use spin::Mutex;
 use x86_64::{structures::paging::{PhysFrame, Page, PageTableFlags, Mapper, FrameAllocator, Size4KiB}, VirtAddr};
@@ -23,11 +23,11 @@ pub struct SharedRegion {
 }
 
 impl SharedMemory {
-    pub unsafe fn create(&mut self, start: Page, end: Page, pid: Pid, whitelist: Vec<Pid>) -> Result<ShareId, CreateShareError> {
+    pub unsafe fn create(&mut self, start: Page, end: Page, pid: Pid, whitelist: Vec<Pid>) -> Result<ShareId, CreateShareStatus> {
         // the upper half of virtual memory is mapped to the kernel in every address space
         // this may change later
         if end.start_address() >= VirtAddr::new(0xffff_8000_0000_0000) {
-            return Err(CreateShareError::OutOfBounds);
+            return Err(CreateShareStatus::OutOfBounds);
         }
 
         let mut mapper = unsafe { memory::get_mapper() };
@@ -61,28 +61,28 @@ impl SharedMemory {
         Ok(id)
     }
 
-    pub unsafe fn join(&mut self, id: u64, start: Page, end: Page, pid: Pid, blacklist: Vec<Pid>) -> Result<(), JoinShareError> {
+    pub unsafe fn join(&mut self, id: u64, start: Page, end: Page, pid: Pid, blacklist: Vec<Pid>) -> Result<(), JoinShareStatus> {
         // serial_println!("{:#018X?}", self.regions);
         
         if !self.regions.contains_key(&id) {
-            return Err(JoinShareError::NotExists);
+            return Err(JoinShareStatus::NotExists);
         }
 
         if end.start_address() >= VirtAddr::new(0xffff_8000_0000_0000) {
-            return Err(JoinShareError::OutOfBounds);
+            return Err(JoinShareStatus::OutOfBounds);
         }
 
         let region = self.regions.get_mut(&id).unwrap();
 
         // if there's a whitelist, don't let any process in that's not on it
         if region.whitelist.len() > 0 && !region.whitelist.contains(&pid) {
-            return Err(JoinShareError::NotAllowed);
+            return Err(JoinShareStatus::NotAllowed);
         }
 
         // processes can pass a blacklist when they join a shared memory region
         // this allows them to ensure the creator of the region didn't allow any processes they dont like
         if blacklist.iter().any(|pid| region.whitelist.contains(pid)) {
-            return Err(JoinShareError::BlacklistClash);
+            return Err(JoinShareStatus::BlacklistClash);
         }
 
         let mut pages = Page::range_inclusive(start, end);
@@ -91,9 +91,9 @@ impl SharedMemory {
             let page_count = pages.count();
 
             if region.frames.len() > page_count {
-                return Err(JoinShareError::TooSmall);
+                return Err(JoinShareStatus::TooSmall);
             } else if region.frames.len() < page_count {
-                return Err(JoinShareError::TooLarge);
+                return Err(JoinShareStatus::TooLarge);
             }
         }
 
@@ -112,7 +112,7 @@ impl SharedMemory {
         };
 
         if !none_mapped {
-            return Err(JoinShareError::AlreadyMapped);
+            return Err(JoinShareStatus::AlreadyMapped);
         }
 
         let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE | PageTableFlags::USER_ACCESSIBLE;

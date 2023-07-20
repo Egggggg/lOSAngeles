@@ -15,6 +15,8 @@ use core::arch::asm;
 
 use abi::{ConfigRBufferStatus, Syscall};
 
+pub use abi::Status;
+
 pub fn exit() {
     unsafe {
         asm!(

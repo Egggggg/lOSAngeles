@@ -1,13 +1,13 @@
 use core::arch::asm;
 
-use abi::Syscall;
+use abi::{Syscall, ipc::{NotifyStatus, ConfigMailboxStatus, MailboxFlags}, Status};
 
-pub use abi::ipc::{Message, PayloadMessage, SendStatus, ReceiveStatus, Pid};
+pub use abi::ipc::{Message, PayloadMessage, SendStatus, ReceiveStatus, Pid, ReadMailboxStatus};
 
 use crate::serial_println;
 
 /// Sends a message to another process, blocking until it is received
-pub fn send(message: Message) -> SendStatus {
+pub fn send_message(message: Message) -> SendStatus {
     let rax = Syscall::send as u64;
     let Message { pid, data0, data1, data2, data3 } = message;
 
@@ -58,6 +58,107 @@ pub fn receive(whitelist: &[Pid]) -> Message {
     serial_println!("Receive status: {}", status);
 
     Message { pid, data0, data1, data2, data3 }
+}
+
+pub fn notify(message: Message) -> NotifyStatus {
+    let rax = Syscall::notify as u64;
+    let Message { pid, data0, data1, data2, data3 } = message;
+
+    let status: u64;
+
+    unsafe {
+        asm!(
+            "syscall",
+            in("rax") rax,
+            in("rdi") pid,
+            in("rsi") data0,
+            in("rdx") data1,
+            in("r8") data2,
+            in("r9") data3,
+            lateout("rax") status,
+        );
+    }
+
+    status.try_into().unwrap()
+}
+
+
+pub fn read_mailbox() -> (ReadMailboxStatus, Option<Message>) {
+    let rax = Syscall::read_mailbox as u64;
+
+    let status: u64;
+    let pid: Pid;
+    let data0: u64;
+    let data1: u64;
+    let data2: u64;
+    let data3: u64;
+
+    unsafe {
+        asm!(
+            "syscall",
+            in("rax") rax,
+            lateout("rax") status,
+            lateout("rdi") pid,
+            lateout("rsi") data0,
+            lateout("rdx") data1,
+            lateout("r8") data2,
+            lateout("r9") data3,
+        );
+    }
+
+    serial_println!("Receive status: {}", status);
+
+    let status: ReadMailboxStatus = status.try_into().unwrap();
+
+    if status.is_err() {
+        (status, None)
+    } else {
+        (status, Some(Message { pid, data0, data1, data2, data3 }))
+    }
+}
+
+pub fn set_mailbox_whitelist(whitelist: &[Pid]) -> ConfigMailboxStatus {
+    let rax = Syscall::config_mailbox as u64;
+    let rdi: u64 = MailboxFlags { enable: true, set_whitelist: true }.into();
+    let rsi = whitelist.as_ptr();
+    let rdx = whitelist.len();
+
+    let status: u64;
+
+    unsafe {
+        asm!(
+            "syscall",
+            in("rax") rax,
+            in("rdi") rdi,
+            in("rsi") rsi,
+            in("rdx") rdx,
+            lateout("rax") status,
+        )
+    }
+
+    status.try_into().unwrap()
+}
+
+pub fn set_mailbox_enabled(to: bool) -> ConfigMailboxStatus {
+    let rax = Syscall::config_mailbox as u64;
+    let rdi: u64 = MailboxFlags { enable: to, set_whitelist: false }.into();
+    let rsi = 0;
+    let rdx = 0;
+
+    let status: u64;
+
+    unsafe {
+        asm!(
+            "syscall",
+            in("rax") rax,
+            in("rdi") rdi,
+            in("rsi") rsi,
+            in("rdx") rdx,
+            lateout("rax") status,
+        )
+    }
+
+    status.try_into().unwrap()
 }
 
 pub fn send_payload(message: PayloadMessage) -> SendStatus {

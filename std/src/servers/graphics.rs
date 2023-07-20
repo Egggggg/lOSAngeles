@@ -30,14 +30,11 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height
 
     let msg = receive(&[1]);
 
-    msg.data0.into()
+    msg.data0.try_into().unwrap()
 }
 
 pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
     let data0 = (0x11 << 56) | ((x as u64) << 40) | ((y as u64) << 24) | ((color as u64) << 8) | scale as u64;
-    
-    let out: u64;
-
     let status = send_payload(PayloadMessage {
         pid: 1,
         data0,

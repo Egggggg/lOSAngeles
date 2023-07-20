@@ -1,7 +1,7 @@
 use core::arch::asm;
 
 use abi::{ipc::Pid, Syscall};
-pub use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareError, CreateShareResponse};
+pub use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareResponse};
 
 use crate::align_down;
 

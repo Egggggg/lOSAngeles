@@ -9,7 +9,7 @@ mod commands;
 mod drawing;
 mod font;
 
-use std::{ipc::{receive, send}, println, serial_println, exit, config_rbuffer};
+use std::{ipc::{receive, send_message}, println, serial_println, exit, config_rbuffer};
 
 use commands::Command;
 
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn _start() {
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("Invalid command: {:#04X}", opcode);
 
-            // send(Message {
+            // send_message(Message {
             //     pid: request.pid,
             //     data0: 0xFF,
             //     ..Default::default()
@@ -46,6 +46,6 @@ pub unsafe extern "C" fn _start() {
         };
 
         // change this to a notify later
-        send(response);
+        send_message(response);
     }
 }

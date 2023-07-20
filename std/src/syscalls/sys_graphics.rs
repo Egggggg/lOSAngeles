@@ -28,7 +28,7 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height:
         );
     }
 
-    out.into()
+    out.try_into().unwrap()
 }
 
 pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {

@@ -9,7 +9,7 @@
 
 use std::{
     getpid, exit, println,
-    ipc::{send, receive},
+    ipc::{send_message, receive},
     memshare::{join_memshare, create_memshare, CreateShareStatus, JoinShareStatus}, 
     ipc::Message
 };
@@ -38,7 +38,7 @@ fn run_server() {
 
     println!("1: Memshare created");
 
-    send(Message {
+    send_message(Message {
         pid: 2,
         data0: start,
         data1: end,
@@ -61,7 +61,7 @@ fn run_server() {
 
     unsafe { *ptr = 16384 };
 
-    send(Message {
+    send_message(Message {
         pid: 2,
         data0: target,
         ..Default::default()
@@ -96,7 +96,7 @@ fn run_client() {
 
     println!("2: *ptr: {}", unsafe { *ptr });
 
-    send(Message {
+    send_message(Message {
         pid: 1,
         ..Default::default()
     });

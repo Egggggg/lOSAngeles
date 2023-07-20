@@ -105,3 +105,21 @@ impl TryFrom<u64> for ConfigRBufferStatus {
         }
     }
 }
+
+impl From<ConfigRBufferStatus> for u8 {
+    fn from(value: ConfigRBufferStatus) -> Self {
+        value as u8
+    }
+}
+
+impl Status for ConfigRBufferStatus {}
+
+pub trait Status where 
+    Self: Sized,
+    u8: From<Self>
+{
+    fn is_err(self) -> bool {
+        let num: u8 = u8::from(self);
+        num >= 10
+    }
+}
