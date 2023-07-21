@@ -260,6 +260,10 @@ pub unsafe fn syscall() {
         in("rcx") rcx,
         in("rax") out.rax,
         in("rdi") out.rdi,
+        in("rsi") out.rsi,
+        in("rdx") out.rdx,
+        in("r8") out.r8,
+        in("r9") out.r9,
     );
 }
 

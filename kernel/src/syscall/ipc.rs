@@ -2,7 +2,7 @@ use abi::ipc::{SendStatus, Message, Pid, PayloadMessage, NotifyStatus, MailboxFl
 
 use alloc::{slice, vec::Vec};
 
-use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}};
+use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}, println};
 
 use super::build_user_vec;
 
@@ -42,15 +42,17 @@ pub unsafe fn sys_receive(whitelist_start: u64, whitelist_len: u64) -> ReceiveSt
 /// Sends a message to the mailbox of the target process without blocking
 pub fn sys_notify(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> NotifyStatus {
     let mut scheduler = SCHEDULER.write();
-    ipc::notify(pid, Message { pid, data0, data1, data2, data3 }, &mut scheduler)
+    let sender_pid = scheduler.queue.get(0).unwrap().pid;
+
+    ipc::notify(sender_pid, Message { pid, data0, data1, data2, data3 }, &mut scheduler)
 }
 
 /// Reads the newest message from the mailbox, or returns an error if there is none
 pub fn sys_read_mailbox() -> ReturnRegs {
     let mut scheduler = SCHEDULER.write();
-    let recipient_pid = scheduler.get_current().unwrap();
+    let recipient = scheduler.get_current().unwrap();
 
-    ipc::read_mailbox(recipient_pid)
+    ipc::read_mailbox(recipient)
 }
 
 /// Configures the mailbox of the current process
@@ -69,6 +71,7 @@ pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: 
             return ConfigMailboxStatus::InvalidWhitelist;
         };
     
+        println!("[0] {:?}", whitelist);
         mailbox.whitelist = whitelist;
     }
 

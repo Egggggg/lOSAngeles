@@ -49,6 +49,7 @@ pub extern "C" fn _start() {
         scheduler.add_new(Program::Graphics, true);
         scheduler.add_new(Program::Current1, false);
         scheduler.add_new(Program::Current1, false);
+        scheduler.add_new(Program::Current1, false);
     }
 
     process::run_process();

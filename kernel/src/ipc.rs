@@ -143,17 +143,20 @@ pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> N
         return NotifyStatus::InvalidRecipient;
     };
 
-    if !recipient.message_handler.mailbox.enabled {
+    let mailbox = &mut recipient.message_handler.mailbox;
+
+    if !mailbox.enabled {
         return NotifyStatus::Disabled;
     }
 
-    if recipient.message_handler.mailbox.whitelist.len() > 0 && !recipient.message_handler.mailbox.whitelist.contains(&sender_pid) {
+    if mailbox.whitelist.len() > 0 && !mailbox.whitelist.contains(&sender_pid) {
+        println!("[0] Pid ({}) not in Whitelist({:?})", sender_pid, mailbox.whitelist);
         return NotifyStatus::Blocked;
     }
 
     serial_println!("   {:?}", message);
 
-    recipient.message_handler.mailbox.notifs.push_back(message);
+    mailbox.notifs.push_back(message);
     NotifyStatus::Success
 }
 

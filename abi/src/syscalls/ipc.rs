@@ -7,7 +7,7 @@ pub type Pid = u64;
 pub const RESPONSE_BUFFER: u64 = 0x0000_7fff_0400_0000;
 pub const RESPONSE_BUFFER_SIZE: u64 = 0x0200_0000;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum SendStatus {
     Success = 0,
@@ -42,7 +42,7 @@ impl From<SendStatus> for u8 {
 
 impl Status for SendStatus {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ReceiveStatus {
     Success = 0,
@@ -69,7 +69,7 @@ impl From<ReceiveStatus> for u8 {
 
 impl Status for ReceiveStatus {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum NotifyStatus {
     Success = 0,
@@ -100,7 +100,7 @@ impl From<NotifyStatus> for u8 {
 
 impl Status for NotifyStatus {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ReadMailboxStatus {
     OneMessage = 0,
@@ -173,7 +173,7 @@ impl From<PayloadMessage> for Message {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum ConfigMailboxStatus {
     Success = 0,
@@ -200,7 +200,7 @@ impl From<ConfigMailboxStatus> for u8 {
 
 impl Status for ConfigMailboxStatus {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MailboxFlags {
     pub enable: bool,
     pub set_whitelist: bool,

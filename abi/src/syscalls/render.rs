@@ -2,7 +2,7 @@ use crate::InvalidStatusCode;
 
 use super::Status;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]
 pub enum DrawBitmapStatus {
     Success = 0,
@@ -10,8 +10,6 @@ pub enum DrawBitmapStatus {
     TooTall = 11,
     InvalidLength = 12,
     InvalidStart = 13,
-    NotFriends = 14,
-    Invalid = 255,
 }
 
 impl TryFrom<u64> for DrawBitmapStatus {
@@ -24,7 +22,6 @@ impl TryFrom<u64> for DrawBitmapStatus {
             11 => Ok(Self::TooTall),
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
-            14 => Ok(Self::NotFriends),
             _ => Err(InvalidStatusCode)
         }
     }
@@ -39,7 +36,7 @@ impl From<DrawBitmapStatus> for u8 {
 impl Status for DrawBitmapStatus {}
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u64)]
 pub enum DrawStringStatus {
     Success = 0,
@@ -47,8 +44,7 @@ pub enum DrawStringStatus {
     TooTall = 11,
     InvalidLength = 12,
     InvalidStart = 13,
-    NotFriends = 14,
-    InvalidUtf8 = 15,
+    InvalidUtf8 = 14,
 }
 
 impl TryFrom<u64> for DrawStringStatus {
@@ -61,8 +57,7 @@ impl TryFrom<u64> for DrawStringStatus {
             11 => Ok(Self::TooTall),
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
-            14 => Ok(Self::NotFriends),
-            15 => Ok(Self::InvalidUtf8),
+            14 => Ok(Self::InvalidUtf8),
             _ => Err(InvalidStatusCode)
         }
     }
