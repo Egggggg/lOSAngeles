@@ -1,8 +1,8 @@
-use abi::ipc::PayloadMessage;
+use abi::{ipc::{PayloadMessage, ReadMailboxStatus}, render::DrawStringStatus};
 
 pub use abi::render::DrawBitmapStatus;
 
-use crate::{ipc::{receive, send_payload}, println};
+use crate::{getpid, ipc::{send_payload, read_mailbox, read_mailbox_from}, println, sys_yield};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height: u16, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {
@@ -28,12 +28,23 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let msg = receive(&[1]);
+    let mut msg = read_mailbox();
 
-    msg.data0.try_into().unwrap()
+    if msg.0 == ReadMailboxStatus::Disabled {
+        return DrawBitmapStatus::Unknown;
+    }
+
+    while msg.0 == ReadMailboxStatus::NoMessages {
+        sys_yield();
+        msg = read_mailbox();
+    }
+
+    let status = msg.1.unwrap().data0;
+
+    status.try_into().unwrap()
 }
 
-pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
+pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> DrawStringStatus {
     let data0 = (0x11 << 56) | ((x as u64) << 40) | ((y as u64) << 24) | ((color as u64) << 8) | scale as u64;
     let status = send_payload(PayloadMessage {
         pid: 1,
@@ -47,9 +58,20 @@ pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> u64 {
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let msg = receive(&[1]);
+    let mut msg = read_mailbox_from(1);
 
-    msg.data0.into()
+    if msg.0 == ReadMailboxStatus::Disabled {
+        return DrawStringStatus::Unknown;
+    }
+
+    while msg.0 == ReadMailboxStatus::NoMessages {
+        sys_yield();
+        msg = read_mailbox_from(1);
+    }
+    
+    let status = msg.1.unwrap().data0;
+
+    status.try_into().unwrap()
 }
 
 // #[doc(hidden)]

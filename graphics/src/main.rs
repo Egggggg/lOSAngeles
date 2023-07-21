@@ -9,9 +9,9 @@ mod commands;
 mod drawing;
 mod font;
 
-use std::{ipc::{receive, send_message}, println, serial_println, exit, config_rbuffer};
+use std::{ipc::{receive, send_message, notify}, println, serial_println, exit, config_rbuffer};
 
-use commands::Command;
+use graphics::Command;
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -27,7 +27,7 @@ pub unsafe extern "C" fn _start() {
         let opcode = (request.data0 >> 56) & 0xFF;
 
         let Ok(command): Result<Command, _> = opcode.try_into() else {
-            panic!("Invalid command: {:#04X}", opcode);
+            panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
 
             // send_message(Message {
             //     pid: request.pid,
@@ -46,6 +46,6 @@ pub unsafe extern "C" fn _start() {
         };
 
         // change this to a notify later
-        send_message(response);
+        notify(response);
     }
 }

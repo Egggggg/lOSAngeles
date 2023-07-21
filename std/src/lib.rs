@@ -9,6 +9,8 @@ extern crate alloc;
 
 use core::panic::PanicInfo;
 
+use abi::ipc::PayloadMessage;
+use alloc::{slice, vec::Vec};
 pub use syscalls::*;
 pub use servers::*;
 
@@ -28,4 +30,12 @@ pub(crate) fn align_down(addr: usize, align: usize) -> usize {
 pub(crate) fn align_up(addr: usize, align: usize) -> usize {
     let remainder = addr % align;
     addr + (align - remainder)
+}
+
+pub unsafe fn extract_payload<T>(message: &PayloadMessage) -> Vec<T>
+where
+    T: Clone
+{
+    let ptr = message.payload as *const T;
+    slice::from_raw_parts(ptr, message.payload_len as usize).to_vec()
 }

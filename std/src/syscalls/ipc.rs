@@ -82,8 +82,15 @@ pub fn notify(message: Message) -> NotifyStatus {
     status.try_into().unwrap()
 }
 
-
+// Reads the oldest message from the mailbox
 pub fn read_mailbox() -> (ReadMailboxStatus, Option<Message>) {
+    read_mailbox_from(0)
+}
+
+/// Reads the oldest message from the mailbox
+/// 
+/// Can filter to messages from a specific PID, or 0 for any
+pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>) {
     let rax = Syscall::read_mailbox as u64;
 
     let status: u64;
@@ -97,6 +104,7 @@ pub fn read_mailbox() -> (ReadMailboxStatus, Option<Message>) {
         asm!(
             "syscall",
             in("rax") rax,
+            in("rdi") sender_pid,
             lateout("rax") status,
             lateout("rdi") pid,
             lateout("rsi") data0,

@@ -48,11 +48,11 @@ pub fn sys_notify(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> N
 }
 
 /// Reads the newest message from the mailbox, or returns an error if there is none
-pub fn sys_read_mailbox() -> ReturnRegs {
+pub fn sys_read_mailbox(sender_pid: Pid) -> ReturnRegs {
     let mut scheduler = SCHEDULER.write();
     let recipient = scheduler.get_current().unwrap();
 
-    ipc::read_mailbox(recipient)
+    ipc::read_mailbox(recipient, sender_pid)
 }
 
 /// Configures the mailbox of the current process

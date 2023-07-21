@@ -140,6 +140,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vfs"
+version = "0.1.0"
+dependencies = [
+ "std",
+]
+
+[[package]]
 name = "volatile"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

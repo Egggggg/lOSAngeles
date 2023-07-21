@@ -160,7 +160,7 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::read_mailbox => {
-            ipc::sys_read_mailbox()
+            ipc::sys_read_mailbox(rdi)
         }
         Syscall::config_mailbox => {
             let status = ipc::sys_config_mailbox(rdi, rsi, rdx);

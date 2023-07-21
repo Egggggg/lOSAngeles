@@ -97,7 +97,6 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
             recipient.reg_state = regs;
             recipient.exec_state = ExecState::Running;
             recipient.message_handler.state = MessageHandlerState::Idle;
-            let pid = recipient.pid;
 
             // stop borrowing `processes`
             let recipient = 0;
@@ -107,13 +106,9 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
             sender.exec_state = ExecState::Running;
             sender.message_handler.state = MessageHandlerState::Idle;
 
-            // serial_println!("Message received by {}", pid);
-            // serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, data2, data3);
-
             Some(MessageState::Received)
         },
         e => {
-            serial_println!("Send failed: {:?}", e);
             let sender = processes.iter_mut().find(|p| p.pid == sender_pid).unwrap();
             
             sender.exec_state = ExecState::WaitingIpc;
@@ -138,8 +133,10 @@ pub fn receive_message(recipient: Pid, whitelist: Vec<Pid>) {
 /// Sends a notification to the target process.
 pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> NotifyStatus {
     let processes = &mut scheduler.queue;
+    
+    let Message { pid, data0, data1, data2, data3 } = message;
 
-    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == message.pid) else {
+    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == pid) else {
         return NotifyStatus::InvalidRecipient;
     };
 
@@ -150,17 +147,14 @@ pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> N
     }
 
     if mailbox.whitelist.len() > 0 && !mailbox.whitelist.contains(&sender_pid) {
-        println!("[0] Pid ({}) not in Whitelist({:?})", sender_pid, mailbox.whitelist);
         return NotifyStatus::Blocked;
     }
-
-    serial_println!("   {:?}", message);
-
+    
     mailbox.notifs.push_back(message);
     NotifyStatus::Success
 }
 
-pub fn read_mailbox(recipient: &mut Process) -> ReturnRegs {
+pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
     if !recipient.message_handler.mailbox.enabled {
         return ReturnRegs {
             rax: ReadMailboxStatus::Disabled as u64,
@@ -177,7 +171,18 @@ pub fn read_mailbox(recipient: &mut Process) -> ReturnRegs {
         };
     }
 
-    let message = notifs.pop_front().unwrap();
+    let message = if sender_pid != 0 {
+        let Some(idx) = notifs.iter().position(|p| p.pid == sender_pid) else {
+            return ReturnRegs {
+                rax: ReadMailboxStatus::NoMessages as u64,
+                ..Default::default()
+            };
+        };
+
+        notifs.remove(idx)
+    } else {
+        notifs.pop_front()
+    }.unwrap();
 
     let rax = if notifs.len() > 0 { ReadMailboxStatus::MoreMessages } else { ReadMailboxStatus::OneMessage } as u64;
 

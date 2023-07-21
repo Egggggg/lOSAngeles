@@ -10,6 +10,8 @@ pub enum DrawBitmapStatus {
     TooTall = 11,
     InvalidLength = 12,
     InvalidStart = 13,
+    /// This value is reserved for when the client's mailbox is disabled
+    Unknown = 255,
 }
 
 impl TryFrom<u64> for DrawBitmapStatus {
@@ -22,6 +24,7 @@ impl TryFrom<u64> for DrawBitmapStatus {
             11 => Ok(Self::TooTall),
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
+            255 => Ok(Self::Unknown),
             _ => Err(InvalidStatusCode)
         }
     }
@@ -45,6 +48,8 @@ pub enum DrawStringStatus {
     InvalidLength = 12,
     InvalidStart = 13,
     InvalidUtf8 = 14,
+    /// This value is reserved for when the client's mailbox is disabled
+    Unknown = 255,
 }
 
 impl TryFrom<u64> for DrawStringStatus {
@@ -58,6 +63,7 @@ impl TryFrom<u64> for DrawStringStatus {
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
             14 => Ok(Self::InvalidUtf8),
+            255 => Ok(Self::Unknown),
             _ => Err(InvalidStatusCode)
         }
     }

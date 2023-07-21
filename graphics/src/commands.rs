@@ -1,34 +1,8 @@
-use core::sync::atomic::AtomicU64;
-use std::{ipc::{Message, PayloadMessage}, sys_graphics::DrawBitmapStatus, println};
+use std::{ipc::{Message, PayloadMessage}, sys_graphics::DrawBitmapStatus};
 
 use alloc::{slice, string::String};
 
 use crate::{drawing, font::{FONT, self}};
-
-static NEXT_SHARE: AtomicU64 = AtomicU64::new(4096);
-
-#[derive(Clone, Copy, Debug)]
-#[repr(u64)]
-#[allow(non_camel_case_types)]
-pub enum Command {
-    draw_bitmap = 0x10,
-    draw_string = 0x11,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct InvalidCommand;
-
-impl TryFrom<u64> for Command {
-    type Error = InvalidCommand;
-
-    fn try_from(value: u64) -> Result<Self, Self::Error> {
-        match value {
-            0x10 => Ok(Self::draw_bitmap),
-            0x11 => Ok(Self::draw_string),
-            _ => Err(InvalidCommand),
-        }
-    }
-}
 
 pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
@@ -84,7 +58,7 @@ pub fn draw_bitmap(request: PayloadMessage) -> Message {
 }
 
 pub fn draw_string(request: PayloadMessage) -> Message {
-    let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
+    let PayloadMessage { pid, data0, data1: _, payload, payload_len } = request;
 
     let data0_bytes = data0.to_le_bytes();
     let x = data0_bytes[5] as u16 | ((data0_bytes[6] as u16) << 8);
