@@ -6,16 +6,13 @@
 extern crate alloc;
 
 pub mod commands;
-pub mod drawing;
-pub mod font;
-pub mod tty;
 
 use std::{ipc::{receive, send_message, notify}, println, serial_println, exit, config_rbuffer};
 
 use alloc::format;
 use graphics::Command;
 
-use crate::drawing::FB;
+use graphics::drawing::FB;
 
 const TTY_COLOR: u16 = 0xDDDD;
 const TTY_SCALE: usize = 1;
@@ -26,7 +23,7 @@ pub unsafe extern "C" fn _start() {
 
     config_rbuffer(4096);
 
-    let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB);
+    let mut tty = graphics::tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB);
 
     loop {
         let request = receive(&[]);

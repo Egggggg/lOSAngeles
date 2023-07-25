@@ -1,5 +1,11 @@
 #![no_std]
 
+extern crate alloc;
+
+pub mod drawing;
+pub mod font;
+pub mod tty;
+
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
 #[allow(non_camel_case_types)]
