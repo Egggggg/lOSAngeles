@@ -29,6 +29,14 @@ name = "graphics"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
+ "spin 0.9.8",
+ "std",
+]
+
+[[package]]
+name = "inputs"
+version = "0.1.0"
+dependencies = [
  "std",
 ]
 

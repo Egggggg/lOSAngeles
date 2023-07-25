@@ -1,6 +1,11 @@
+use core::ptr::copy;
 use std::{dev::{FramebufferDescriptor, request_fb}, println};
 
+use alloc::vec::{Vec, self};
 use lazy_static::lazy_static;
+use spin::Mutex;
+
+use crate::font::{FONT, self};
 
 lazy_static! {
     pub static ref FB: FramebufferDescriptor = {
@@ -11,6 +16,10 @@ lazy_static! {
         }
 
         fb_descriptor.unwrap()
+    };
+
+    static ref DOUBLE_BUFFER: Mutex<Vec<u8>> = {
+        Mutex::new(alloc::vec![0; FB.pitch as usize * FB.height as usize]) 
     };
 }
 
@@ -59,5 +68,42 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
         }
 
         base = unsafe { base.offset(((FB.pitch as usize / 2) * scale) as isize) };
+    }
+}
+
+/// Shifts all framebuffer content up by `amount` scanlines
+/// 
+/// # Safety
+/// 
+/// The framebuffer given by Limine at boot must still be in 
+/// memory at the same address it was when it was received
+pub unsafe fn shift_up(amount: usize) {
+    let dst = FB.address as *mut u8;
+
+    {
+        let src = DOUBLE_BUFFER.lock()[amount * FB.pitch as usize..].to_vec();
+
+        for (i, byte) in src.iter().enumerate() {
+            dst.offset(i as isize).write(*byte);
+            DOUBLE_BUFFER.lock()[i] = *byte;
+        }
+    }
+
+    // fill in the bottom `amount` lines
+    let bottom = (FB.height as usize - amount) * FB.pitch as usize;
+    let bottom_ptr = dst.offset(bottom as isize);
+
+    bottom_ptr.write_bytes(0x00, amount * FB.pitch as usize);
+
+    let bottom_bytes = alloc::vec![0; amount * FB.pitch as usize];
+
+    DOUBLE_BUFFER.lock()[bottom..].fill(0);
+}
+
+pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16) {
+    for (i, c) in text.chars().enumerate() {
+        let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
+
+        draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
     }
 }

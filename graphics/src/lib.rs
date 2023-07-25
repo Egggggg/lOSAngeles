@@ -6,6 +6,7 @@
 pub enum Command {
     draw_bitmap = 0x10,
     draw_string = 0x11,
+    print = 0x12,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -18,6 +19,7 @@ impl TryFrom<u64> for Command {
         match value {
             0x10 => Ok(Self::draw_bitmap),
             0x11 => Ok(Self::draw_string),
+            0x12 => Ok(Self::print),
             _ => Err(InvalidCommand),
         }
     }

@@ -1,5 +1,5 @@
 [package]
-name = "graphics"
+name = "inputs"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,5 +7,3 @@ edition = "2021"
 
 [dependencies]
 std = { path = "../std" }
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
-spin = "0.9.8"

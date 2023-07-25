@@ -1,7 +1,7 @@
 use core::arch::asm;
 use alloc::fmt;
 
-pub use abi::render::DrawBitmapStatus;
+pub use abi::render::{DrawBitmapStatus, DrawStringStatus};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u8, height: u8, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {

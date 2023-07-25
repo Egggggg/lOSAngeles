@@ -5,19 +5,27 @@
 
 extern crate alloc;
 
-mod commands;
-mod drawing;
-mod font;
+pub mod commands;
+pub mod drawing;
+pub mod font;
+pub mod tty;
 
 use std::{ipc::{receive, send_message, notify}, println, serial_println, exit, config_rbuffer};
 
 use graphics::Command;
+
+use crate::drawing::FB;
+
+const TTY_COLOR: u16 = 0xDDDD;
+const TTY_SCALE: usize = 1;
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
     serial_println!("[GRAPHICS] Started");
 
     config_rbuffer(4096);
+
+    let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB);
 
     loop {
         let request = receive(&[]);
@@ -43,6 +51,7 @@ pub unsafe extern "C" fn _start() {
         let response = match command  {
             Command::draw_bitmap => commands::draw_bitmap(request.into()),
             Command::draw_string => commands::draw_string(request.into()),
+            Command::print => commands::print(request.into(), &mut tty),
         };
 
         // change this to a notify later

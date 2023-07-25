@@ -7,7 +7,6 @@ mod vga;
 mod interrupts;
 mod memory;
 mod allocator;
-mod devices;
 mod syscall;
 mod process;
 mod tty;

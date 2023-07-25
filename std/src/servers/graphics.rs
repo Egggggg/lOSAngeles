@@ -2,7 +2,7 @@ use abi::{ipc::{PayloadMessage, ReadMailboxStatus}, render::DrawStringStatus};
 
 pub use abi::render::DrawBitmapStatus;
 
-use crate::{getpid, ipc::{send_payload, read_mailbox, read_mailbox_from}, println, sys_yield};
+use crate::{ipc::{send_payload, read_mailbox, read_mailbox_from}, println, sys_yield};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height: u16, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {
@@ -10,7 +10,6 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height
         return DrawBitmapStatus::InvalidLength;
     }
 
-    // let data0 = ((0x10 << 56) | (x as u64) << 40) | ((y as u64) << 24) | ((color as u64) << 8);
     let data0 = [0x10, ((x & 0xFF00) >> 8) as u8, (x & 0xFF) as u8, ((y & 0xFF00) >> 8) as u8, (y & 0xFF) as u8, ((color & 0xFF00) >> 8) as u8, (color & 0xFF) as u8, 0];
     let data0 = u64::from_be_bytes(data0);
     let data1 = [((width & 0xFF00) >> 8) as u8, (width & 0xFF) as u8, ((height & 0xFF00) >> 8) as u8, (height & 0xFF) as u8, 0, 0, 0, scale];

@@ -1,8 +1,8 @@
-use std::{ipc::{Message, PayloadMessage}, sys_graphics::DrawBitmapStatus};
+use std::{ipc::{Message, PayloadMessage}, sys_graphics::{DrawBitmapStatus, DrawStringStatus}};
 
 use alloc::{slice, string::String};
 
-use crate::{drawing, font::{FONT, self}};
+use crate::{drawing, font::{FONT, self}, tty::Tty};
 
 pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
@@ -68,7 +68,13 @@ pub fn draw_string(request: PayloadMessage) -> Message {
     
     let payload_ptr = payload as *const u8;
     let payload_bytes = unsafe { slice::from_raw_parts(payload_ptr, payload_len as usize) };
-    let text = String::from_utf8(payload_bytes.into()).unwrap();
+    let Ok(text) = String::from_utf8(payload_bytes.into()) else {
+        return Message {
+            pid,
+            data0: DrawStringStatus::InvalidUtf8 as u64,
+            ..Default::default()
+        };
+    };
 
     let max_width = drawing::FB.width;
     let max_height = drawing::FB.height;
@@ -76,13 +82,13 @@ pub fn draw_string(request: PayloadMessage) -> Message {
     if x as u64 + text.len() as u64 * scale as u64 > max_width {
         return Message {
             pid,
-            data0: DrawBitmapStatus::TooWide as u64,
+            data0: DrawStringStatus::TooWide as u64,
             ..Default::default()
         };
     } else if y as u64 + 16 * scale as u64 > max_height {
         return Message {
             pid,
-            data0: DrawBitmapStatus::TooTall as u64,
+            data0: DrawStringStatus::TooTall as u64,
             ..Default::default()
         };
     }
@@ -95,7 +101,25 @@ pub fn draw_string(request: PayloadMessage) -> Message {
 
     Message {
         pid,
-        data0: 0,
+        data0: DrawStringStatus::Success as u64,
         ..Default::default()
     }
+}
+
+pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
+    let PayloadMessage { pid, data0: _, data1: _, payload, payload_len } = request;
+
+    let payload_ptr = payload as *const u8;
+    let payload_bytes = unsafe { slice::from_raw_parts(payload_ptr, payload_len as usize) };
+    let Ok(text) = String::from_utf8(payload_bytes.into()) else {
+        return Message {
+            pid,
+            data0: DrawStringStatus::InvalidUtf8 as u64,
+            ..Default::default()
+        };
+    };
+
+    tty.write_str(&text);
+
+    Message { ..Default::default() }
 }
