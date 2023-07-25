@@ -6,7 +6,7 @@
 //!     RAX - Status code
 //!     RDI, RSI, RDX, R8, R9, R10 - Return values, first to last
 pub mod serial;
-pub mod sys_graphics;
+// pub mod sys_graphics;
 pub mod ipc;
 pub mod memshare;
 pub mod dev;

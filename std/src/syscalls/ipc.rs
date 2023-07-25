@@ -118,6 +118,8 @@ pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>
 
     let status: ReadMailboxStatus = status.try_into().unwrap();
 
+    serial_println!("{:?}", status);
+
     if status.is_err() {
         (status, None)
     } else {

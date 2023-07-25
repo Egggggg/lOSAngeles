@@ -94,9 +94,6 @@ pub unsafe fn shift_up(amount: usize) {
     let bottom_ptr = dst.offset(bottom as isize);
 
     bottom_ptr.write_bytes(0x00, amount * FB.pitch as usize);
-
-    let bottom_bytes = alloc::vec![0; amount * FB.pitch as usize];
-
     DOUBLE_BUFFER.lock()[bottom..].fill(0);
 }
 

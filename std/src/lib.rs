@@ -16,7 +16,7 @@ pub use servers::*;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    print!("{}", info);
+    serial_print!("{}", info);
     loop {}
 }
 

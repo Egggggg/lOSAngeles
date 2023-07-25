@@ -1,6 +1,6 @@
-use std::{ipc::{Message, PayloadMessage}, sys_graphics::{DrawBitmapStatus, DrawStringStatus}};
+use std::{ipc::{Message, PayloadMessage}, graphics::{DrawBitmapStatus, DrawStringStatus}, serial_println};
 
-use alloc::{slice, string::String};
+use alloc::{slice, string::String, fmt};
 
 use crate::{drawing, font::{FONT, self}, tty::Tty};
 
@@ -107,6 +107,8 @@ pub fn draw_string(request: PayloadMessage) -> Message {
 }
 
 pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
+    serial_println!("[GRAPHICS] trying to print");
+
     let PayloadMessage { pid, data0: _, data1: _, payload, payload_len } = request;
 
     let payload_ptr = payload as *const u8;
@@ -120,6 +122,11 @@ pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
     };
 
     tty.write_str(&text);
+    serial_println!("[GRAPHICS] {}", text);
 
-    Message { ..Default::default() }
+    Message { 
+        pid,
+        data0: DrawStringStatus::Success as u64,
+        ..Default::default()
+    }
 }

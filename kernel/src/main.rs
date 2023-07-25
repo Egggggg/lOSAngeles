@@ -14,9 +14,8 @@ mod ipc;
 
 extern crate alloc;
 
-use core::{panic::PanicInfo};
+use core::panic::PanicInfo;
 
-use alloc::vec::Vec;
 
 use crate::process::Program;
 
@@ -25,22 +24,11 @@ const JEDD_COLOR: u16 = 0b11111_111111_00000;
 #[no_mangle]
 pub extern "C" fn _start() {
     unsafe { init() };
-    println!("Bepis");
 
     // heehoo thats the number
-    println!("Deploying Jedd...");
+    serial_println!("Deploying Jedd...");
     vga::draw_bitmap(&[0x80], 69, 69, JEDD_COLOR, 1, 1, 1);
-    println!("Jedd is on the loose");
-
-    // vga::put_str(75, 75, 6, "Jedd", JEDD_COLOR);
-
-    let mut cool: Vec<usize> = Vec::with_capacity(32);
-
-    for i in 0..cool.capacity() {
-        cool.push(i);
-    };
-
-    println!("cool[4] = {}", cool[4]);
+    serial_println!("Jedd is on the loose");
 
     unsafe {
         let mut scheduler = process::SCHEDULER.write();

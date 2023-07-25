@@ -150,6 +150,11 @@ pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> N
         return NotifyStatus::Blocked;
     }
     
+    let message = Message {
+        pid: sender_pid,
+        ..message
+    };
+
     mailbox.notifs.push_back(message);
     NotifyStatus::Success
 }
@@ -170,6 +175,8 @@ pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
             ..Default::default()
         };
     }
+
+    serial_println!("{:?}", notifs);
 
     let message = if sender_pid != 0 {
         let Some(idx) = notifs.iter().position(|p| p.pid == sender_pid) else {

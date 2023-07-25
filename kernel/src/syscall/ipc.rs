@@ -71,7 +71,6 @@ pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: 
             return ConfigMailboxStatus::InvalidWhitelist;
         };
     
-        println!("[0] {:?}", whitelist);
         mailbox.whitelist = whitelist;
     }
 

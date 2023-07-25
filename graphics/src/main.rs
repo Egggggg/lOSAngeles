@@ -12,6 +12,7 @@ pub mod tty;
 
 use std::{ipc::{receive, send_message, notify}, println, serial_println, exit, config_rbuffer};
 
+use alloc::format;
 use graphics::Command;
 
 use crate::drawing::FB;
@@ -54,7 +55,10 @@ pub unsafe extern "C" fn _start() {
             Command::print => commands::print(request.into(), &mut tty),
         };
 
-        // change this to a notify later
+        tty.write_str(&format!("[GRAPHICS] {:?}\n", response));
+        
         notify(response);
+
+        tty.write_str("notification sent\n");
     }
 }
