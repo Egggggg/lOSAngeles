@@ -111,3 +111,7 @@ Fixed some IPC bugs and got my first server function (draw_bitmap) working
 Added payload messages to allow sending dynamically sized data between processes without explicitly sharing memory
 
 Added the draw_string function to my graphics server
+
+## July 8 to 25
+
+Added notifications (async IPC) and user mode print to a global TTY kinda guy
