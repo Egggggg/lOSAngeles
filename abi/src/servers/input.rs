@@ -59,6 +59,7 @@ impl Status for PublishStatus {}
 pub enum SubscribeStatus {
     Success = 0,
     AlreadySubscribed = 10,
+    None = 255,
 }
 
 impl TryFrom<u64> for SubscribeStatus {
@@ -68,6 +69,7 @@ impl TryFrom<u64> for SubscribeStatus {
         match value {
             0 => Ok(Self::Success),
             10 => Ok(Self::AlreadySubscribed),
+            255 => Ok(Self::None),
             _ => Err(InvalidStatusCode),
         }
     }

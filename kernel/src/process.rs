@@ -141,9 +141,6 @@ impl Scheduler {
     }
 
     pub unsafe fn next(&mut self) -> Option<&Process> {
-
-        // serial_println!("{:#?}", self.queue);
-
         for _ in 0..self.queue.len() {
             self.queue.rotate_left(1);
 
@@ -152,22 +149,17 @@ impl Scheduler {
                 (process.exec_state, process.pid)
             };
 
-            // serial_println!("Checking process {}", pid);
-
             match exec_state {
                 ExecState::WaitingIpc => {
-                    // serial_println!("   Process is waiting on IPC");
                     let status = ipc::refresh_ipc(pid, self);
 
                     if status {
                         self.get_current().unwrap().exec_state = ExecState::Running;
-                        // serial_println!("   Resuming process");
                         return self.queue.get(0);
                     }
 
                 }
                 _ => {
-                    // serial_println!("Resuming process {}", pid);
                     return self.queue.get(0);
                 },
             }
@@ -176,7 +168,7 @@ impl Scheduler {
         panic!("Deadlock");
     }
 
-    pub  fn get_current(&mut self) -> Option<&mut Process> {
+    pub fn get_current(&mut self) -> Option<&mut Process> {
         self.queue.get_mut(0)
     }
 

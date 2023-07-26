@@ -18,12 +18,10 @@ pub fn subscribe() -> SubscribeStatus {
     });
 
     if status.is_err() {
-        panic!("Couldn't send message to graphics server: {:?}", status);
+        panic!("Couldn't send message to input server: {:?}", status);
     }
 
-    let Ok(msg) = await_notif(1, 0) else {
-        panic!("Subscribe failed [");
-    };
+    let _ = await_notif(1, 0);
 
     SubscribeStatus::Success
 }

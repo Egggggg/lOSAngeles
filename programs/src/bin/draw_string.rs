@@ -10,8 +10,6 @@ pub unsafe extern "C" fn _start() {
     let pid = getpid();
     let content = "Those who gunkless are not lost in the gunk, for they have none";
 
-    draw_string(content, 50, 400, 0xFF80, 1);
-
     if pid == 2 {
         draw_string(content, 0, 200, 0xFFFF, 1);
     } else {

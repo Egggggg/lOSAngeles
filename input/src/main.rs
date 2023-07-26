@@ -6,7 +6,7 @@ extern crate alloc;
 mod commands;
 mod handling;
 
-use std::ipc::{receive, Pid, notify};
+use std::{ipc::{receive, Pid, notify}, println};
 
 use alloc::vec::Vec;
 use std::input::Command;
@@ -23,6 +23,8 @@ pub unsafe extern "C" fn _start() {
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("[INPUT] Invalid command: {:#04X}", opcode);
         };
+
+        println!("{:?}", command);
 
         let response = match command {
             Command::publish => commands::publish(request, &mut keyboard, &subscribers),

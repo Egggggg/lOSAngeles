@@ -253,8 +253,6 @@ pub unsafe fn syscall() {
         },
     };
 
-    serial_println!("Syscall complete, returning to {:p}", rcx);
-
     asm!(
         "call _sysret_asm",
         in("rcx") rcx,

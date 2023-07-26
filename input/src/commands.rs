@@ -7,7 +7,7 @@ use pc_keyboard::{KeyboardLayout, ScancodeSet, Keyboard, KeyState};
 use crate::handling::decode;
 
 pub fn publish<T: KeyboardLayout, S: ScancodeSet>(request: Message, keyboard: &mut Keyboard<T, S>, subscribers: &Vec<Pid>) -> Message {
-    let Message { pid, data0, data1, data2, data3 } = request;
+    let Message { pid, data0, data1: _, data2: _, data3: _ } = request;
 
     if pid != 0 {
         return Message {

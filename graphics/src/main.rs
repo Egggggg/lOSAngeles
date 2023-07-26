@@ -10,7 +10,7 @@ pub mod drawing;
 pub mod font;
 pub mod tty;
 
-use std::{ipc::{receive, notify}, serial_println, config_rbuffer};
+use std::{ipc::{receive, notify}, serial_println, config_rbuffer, exit, await_notif};
 
 use alloc::format;
 use std::graphics::Command;
@@ -29,7 +29,7 @@ pub unsafe extern "C" fn _start() {
     let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB);
 
     loop {
-        let request = receive(&[]);
+        let request = await_notif(0, attempts);
         let opcode = (request.data0 >> 56) & 0xFF;
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
@@ -56,5 +56,7 @@ pub unsafe extern "C" fn _start() {
         notify(response);
 
         tty.write_str("notification sent\n");
+
+        exit();
     }
 }

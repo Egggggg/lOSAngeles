@@ -157,7 +157,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     let data0 = ((input::Command::publish as u64) << 56) | scancode as u64;
     let mut scheduler = SCHEDULER.write();
 
-    notify(0, Message {
+    notify(, Message {
         pid: 3,
         data0,
         ..Default::default()

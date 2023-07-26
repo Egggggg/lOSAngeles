@@ -115,9 +115,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let Ok(msg) = await_notif(1, 0) else {
-        panic!("Print failed");
-    };
+    let _ = await_notif(1, 0);
 }
 
 /// Prints to the host through the serial interface
