@@ -3,7 +3,7 @@ use crate::InvalidStatusCode;
 use super::Status;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(u8)]
 pub enum DrawBitmapStatus {
     Success = 0,
     TooWide = 10,
@@ -11,7 +11,7 @@ pub enum DrawBitmapStatus {
     InvalidLength = 12,
     InvalidStart = 13,
     /// This value is reserved for when the client's mailbox is disabled
-    Unknown = 255,
+    None = 255,
 }
 
 impl TryFrom<u64> for DrawBitmapStatus {
@@ -24,7 +24,7 @@ impl TryFrom<u64> for DrawBitmapStatus {
             11 => Ok(Self::TooTall),
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
-            255 => Ok(Self::Unknown),
+            255 => Ok(Self::None),
             _ => Err(InvalidStatusCode)
         }
     }
@@ -40,7 +40,7 @@ impl Status for DrawBitmapStatus {}
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(u8)]
 pub enum DrawStringStatus {
     Success = 0,
     TooWide = 10,
@@ -49,7 +49,7 @@ pub enum DrawStringStatus {
     InvalidStart = 13,
     InvalidUtf8 = 14,
     /// This value is reserved for when the client's mailbox is disabled
-    Unknown = 255,
+    None = 255,
 }
 
 impl TryFrom<u64> for DrawStringStatus {
@@ -63,7 +63,7 @@ impl TryFrom<u64> for DrawStringStatus {
             12 => Ok(Self::InvalidLength),
             13 => Ok(Self::InvalidStart),
             14 => Ok(Self::InvalidUtf8),
-            255 => Ok(Self::Unknown),
+            255 => Ok(Self::None),
             _ => Err(InvalidStatusCode)
         }
     }
