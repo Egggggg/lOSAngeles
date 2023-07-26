@@ -1,10 +1,4 @@
-#![no_std]
-
-use std::{Status, InvalidStatusCode};
-
-use num_derive::FromPrimitive;
-
-extern crate alloc;
+use crate::{InvalidStatusCode, Status};
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -30,7 +24,7 @@ impl TryFrom<u64> for Command {
 }
 
 #[derive(Clone, Copy, Debug)]
-#[repr(u64)]
+#[repr(u8)]
 pub enum PublishStatus {
     Success = 0,
     IncomingKey = 1,
@@ -60,8 +54,66 @@ impl From<PublishStatus> for u8 {
 
 impl Status for PublishStatus {}
 
+#[derive(Clone, Copy, Debug)]
+#[repr(u8)]
+pub enum SubscribeStatus {
+    Success = 0,
+    AlreadySubscribed = 10,
+}
+
+impl TryFrom<u64> for SubscribeStatus {
+    type Error = InvalidStatusCode;
+    
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::Success),
+            10 => Ok(Self::AlreadySubscribed),
+            _ => Err(InvalidStatusCode),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KeyEvent {
+    pub code: KeyCode,
+    pub state: KeyState,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct InvalidKeyCode;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyState {
+    Up,
+    Down,
+}
+
+impl TryFrom<u64> for KeyEvent {
+    type Error = InvalidKeyCode;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        let code = KeyCode::try_from(value as u8).map_err(|_| InvalidKeyCode)?;
+        let state = if value & 0x100 > 0 { KeyState::Down } else { KeyState::Up };
+
+        Ok(Self {
+            code,
+            state
+        })
+    }
+}
+
+impl TryFrom<u8> for KeyCode {
+    type Error = InvalidKeyCode;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            i if i == Self::A as u8 => Ok(Self::A),
+            _ => Err(InvalidKeyCode),
+        }
+    }
+}
+
 // Taken from pc_keyboard crate under the MIT license so I can add this top line
-#[derive(FromPrimitive)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum KeyCode {

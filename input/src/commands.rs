@@ -1,8 +1,8 @@
 use std::ipc::{Message, Pid, notify};
 
 use alloc::vec::Vec;
-use input::PublishStatus;
-use pc_keyboard::{KeyboardLayout, ScancodeSet, Keyboard, KeyState, ScancodeSet1};
+use std::input::{PublishStatus, SubscribeStatus};
+use pc_keyboard::{KeyboardLayout, ScancodeSet, Keyboard, KeyState};
 
 use crate::handling::decode;
 
@@ -34,8 +34,7 @@ pub fn publish<T: KeyboardLayout, S: ScancodeSet>(request: Message, keyboard: &m
     for s in subscribers.iter() {
         notify(Message {
             pid: *s,
-            data0: PublishStatus::IncomingKey as u64,
-            data1,
+            data0: PublishStatus::IncomingKey as u64 | data1,
             ..Default::default()
         });
     }
@@ -47,6 +46,22 @@ pub fn publish<T: KeyboardLayout, S: ScancodeSet>(request: Message, keyboard: &m
     }
 }
 
-pub fn subscribe(request: Message) -> Message {
-    Message { ..Default::default() }
+pub fn subscribe(request: Message, subscribers: &mut Vec<Pid>) -> Message {
+    let Message { pid, data0: _, data1: _, data2: _, data3: _ } = request;
+
+    if subscribers.contains(&pid) {
+        Message {
+            pid,
+            data0: SubscribeStatus::AlreadySubscribed as u64,
+            ..Default::default()
+        }
+    } else {
+        subscribers.push(pid);
+
+        Message {
+            pid,
+            data0: SubscribeStatus::Success as u64,
+            ..Default::default()
+        }
+    }
 }

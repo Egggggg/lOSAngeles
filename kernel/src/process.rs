@@ -1,4 +1,4 @@
-use core::{arch::asm, sync::atomic::{AtomicU64, Ordering}};
+use core::arch::asm;
 
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
@@ -14,7 +14,7 @@ const STACK_SIZE: u64 = 4096 * 5;
 
 lazy_static! {
     pub static ref SCHEDULER: RwLock<Scheduler> = {
-        RwLock::new(Scheduler { queue: Vec::new(), next_pid: AtomicU64::new(1) })
+        RwLock::new(Scheduler { queue: Vec::new(), next_pid: 8 })
     };
 }
 
@@ -22,7 +22,7 @@ pub type Pid = u64;
 
 pub struct Scheduler {
     pub queue: Vec<Process>,
-    pub next_pid: AtomicU64,
+    pub next_pid: u64,
 }
 
 #[derive(Clone, Debug)]
@@ -62,7 +62,8 @@ pub enum ExecState {
 #[derive(Clone, Copy, Debug)]
 pub enum Program {
     Current1,
-    Graphics
+    Graphics,
+    Input,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -82,14 +83,21 @@ impl Scheduler {
         // switch to the new address space to map the program and other required pages
         Cr3::write(new_cr3, Cr3Flags::empty());
 
-        let entry = match program {
+        let (pid, entry) = match program {
             Program::Current1 => {
                 let contents = include_bytes!("../../target/programs/current1.elf");
-                elf::load_elf(contents).unwrap()
+                let pid = self.next_pid;
+                self.next_pid += 1;
+                
+                (pid, elf::load_elf(contents).unwrap())
             }
             Program::Graphics => {
                 let contents = include_bytes!("../../target/servers/graphics.elf");
-                elf::load_elf(contents).unwrap()
+                (1, elf::load_elf(contents).unwrap())
+            }
+            Program::Input => {
+                let contents = include_bytes!("../../target/servers/input.elf");
+                (3, elf::load_elf(contents).unwrap())
             }
         };
     
@@ -114,8 +122,6 @@ impl Scheduler {
             in(reg) rsp,
         );
 
-        let pid = self.next_pid.load(Ordering::Relaxed);
-
         let new_process = Process {
             pid,
             cr3: new_cr3,
@@ -128,7 +134,6 @@ impl Scheduler {
             
         };
 
-        self.next_pid.store(pid + 1, Ordering::Relaxed);
         self.queue.push(new_process);
         Cr3::write(old_cr3.0, old_cr3.1);
 

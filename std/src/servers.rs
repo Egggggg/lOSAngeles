@@ -3,6 +3,7 @@ use abi::ipc::{ReadMailboxStatus, Message};
 use crate::{ipc::read_mailbox_from, sys_yield};
 
 pub mod graphics;
+pub mod input;
 
 pub fn await_notif(from: u64, mut attempts: usize) -> Result<(ReadMailboxStatus, Option<Message>), ReadMailboxStatus> {
     let mut msg = read_mailbox_from(from);

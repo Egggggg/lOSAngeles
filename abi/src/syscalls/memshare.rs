@@ -40,7 +40,7 @@ impl From<CreateShareStatus> for u8 {
 impl Status for CreateShareStatus {}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(u64)]
+#[repr(u8)]
 pub enum JoinShareStatus {
     Success = 0,
     UnalignedStart = 10,

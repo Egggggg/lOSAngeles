@@ -16,8 +16,13 @@ cd graphics
 cargo build --target x86_64-angeles.json
 cd ..
 
+cd input
+cargo build --target x86_64-angeles.json
+cd ..
+
 mkdir -p target/servers
 cp target/x86_64-angeles/debug/graphics.elf target/servers/graphics.elf
+cp target/x86_64-angeles/debug/input.elf target/servers/input.elf
 
 echo "Building kernel"
 

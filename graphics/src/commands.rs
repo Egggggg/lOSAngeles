@@ -2,7 +2,7 @@ use std::{ipc::{Message, PayloadMessage}, graphics::{DrawBitmapStatus, DrawStrin
 
 use alloc::{slice, string::String};
 
-use graphics::{drawing, font::{FONT, self}, tty::Tty};
+use crate::{drawing, font::{FONT, self}, tty::Tty};
 
 pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = request;

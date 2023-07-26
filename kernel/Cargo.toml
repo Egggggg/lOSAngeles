@@ -11,4 +11,3 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 spin = "0.9.8"
 limine = "0.1.10"
 abi = { path = "../abi" }
-input = { path = "../input" }

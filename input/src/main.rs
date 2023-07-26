@@ -9,12 +9,12 @@ mod handling;
 use std::ipc::{receive, Pid, notify};
 
 use alloc::vec::Vec;
-use input::Command;
+use std::input::Command;
 use pc_keyboard::{Keyboard, ScancodeSet1, layouts::Us104Key};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
-    let subscribers: Vec<Pid> = Vec::new();
+    let mut subscribers: Vec<Pid> = Vec::new();
     let mut keyboard = Keyboard::new(ScancodeSet1::new(), Us104Key, pc_keyboard::HandleControl::Ignore);
 
     loop {
@@ -26,7 +26,7 @@ pub unsafe extern "C" fn _start() {
 
         let response = match command {
             Command::publish => commands::publish(request, &mut keyboard, &subscribers),
-            Command::subscribe => commands::subscribe(request),
+            Command::subscribe => commands::subscribe(request, &mut subscribers),
         };
 
         notify(response);
