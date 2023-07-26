@@ -1,7 +1,7 @@
 use std::ipc::{Message, Pid, notify};
 
 use alloc::vec::Vec;
-use inputs::PublishStatus;
+use input::PublishStatus;
 use pc_keyboard::{KeyboardLayout, ScancodeSet, Keyboard, KeyState, ScancodeSet1};
 
 use crate::handling::decode;

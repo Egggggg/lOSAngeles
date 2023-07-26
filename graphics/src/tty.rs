@@ -6,8 +6,6 @@ use crate::drawing::{put_str, shift_up};
 
 const CHAR_WIDTH: usize = 8;
 const CHAR_HEIGHT: usize = 16;
-const TTY_COLOR: u16 = 0xDDDD;
-const TTY_SCALE: usize = 1;
 
 /// A TTY for user interaction
 /// `x_max` is inclusive maximum for column number

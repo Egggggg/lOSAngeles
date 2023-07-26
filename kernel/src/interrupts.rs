@@ -1,3 +1,5 @@
+use core::default;
+
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use x86_64::{
@@ -9,7 +11,7 @@ use x86_64::{
     instructions::port::Port, registers::control::Cr3,
 };
 
-use crate::{serial_print, serial_println, memory, serial::SERIAL1};
+use crate::{serial_print, serial_println, memory, serial::SERIAL1, ipc::notify, process::SCHEDULER};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;

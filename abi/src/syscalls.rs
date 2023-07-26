@@ -34,9 +34,9 @@ pub enum Syscall {
     getpid = 0x40,
     sys_yield = 0x48,
     // Temporary
-    draw_bitmap = 0x100,
-    draw_string = 0x101,
-    print = 0x102,
+    // draw_bitmap = 0x100,
+    // draw_string = 0x101,
+    // print = 0x102,
     send_serial = 0x130,
 }
 
@@ -78,9 +78,9 @@ impl TryFrom<u64> for Syscall {
             0x36 => Ok(Self::outl),
             0x40 => Ok(Self::getpid),
             0x48 => Ok(Self::sys_yield),
-            0x100 => Ok(Self::draw_bitmap),
-            0x101 => Ok(Self::draw_string),
-            0x102 => Ok(Self::print),
+            // 0x100 => Ok(Self::draw_bitmap),
+            // 0x101 => Ok(Self::draw_string),
+            // 0x102 => Ok(Self::print),
             0x130 => Ok(Self::send_serial),
             _ => Err(SyscallFromU64Error::InvalidSyscall),
         }

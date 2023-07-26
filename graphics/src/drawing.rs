@@ -1,7 +1,6 @@
-use core::ptr::copy;
-use std::{dev::{FramebufferDescriptor, request_fb}, println};
+use std::dev::{FramebufferDescriptor, request_fb};
 
-use alloc::vec::{Vec, self};
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::Mutex;
 

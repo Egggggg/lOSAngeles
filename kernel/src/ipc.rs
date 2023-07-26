@@ -176,8 +176,6 @@ pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
         };
     }
 
-    serial_println!("{:?}", notifs);
-
     let message = if sender_pid != 0 {
         let Some(idx) = notifs.iter().position(|p| p.pid == sender_pid) else {
             return ReturnRegs {

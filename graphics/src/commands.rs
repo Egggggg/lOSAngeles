@@ -1,6 +1,6 @@
 use std::{ipc::{Message, PayloadMessage}, graphics::{DrawBitmapStatus, DrawStringStatus}, serial_println};
 
-use alloc::{slice, string::String, fmt};
+use alloc::{slice, string::String};
 
 use graphics::{drawing, font::{FONT, self}, tty::Tty};
 

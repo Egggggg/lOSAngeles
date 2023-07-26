@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use std::{graphics::{self, DrawBitmapStatus}, print, println, exit, ipc::set_mailbox_enabled};
+use std::{graphics::{self, DrawBitmapStatus}, print, println, exit};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

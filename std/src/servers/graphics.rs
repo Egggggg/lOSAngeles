@@ -3,7 +3,7 @@ use abi::{ipc::PayloadMessage, Status};
 pub use abi::render::{DrawBitmapStatus, DrawStringStatus};
 use alloc::fmt;
 
-use crate::{ipc::send_payload, println, await_notif, serial_println, getpid};
+use crate::{ipc::send_payload, println, await_notif, serial_println};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height: u16, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {
@@ -29,7 +29,7 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height
     }
 
     let Ok(msg) = await_notif(1, 0) else {
-        return DrawBitmapStatus::Unknown;
+        return DrawBitmapStatus::None;
     };
 
     let status = msg.1.unwrap().data0;
@@ -52,7 +52,7 @@ pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> DrawStr
     }
 
     let Ok(msg) = await_notif(1, 0) else {
-        return DrawStringStatus::Unknown;
+        return DrawStringStatus::None;
     };
 
     let status = msg.1.unwrap().data0;

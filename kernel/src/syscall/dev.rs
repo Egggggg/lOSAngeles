@@ -1,7 +1,7 @@
 use abi::dev::{RequestFbStatus, FramebufferDescriptor};
 use x86_64::{structures::paging::{Page, Mapper, PageTableFlags, mapper::TranslateError, Size4KiB, Size2MiB}, VirtAddr};
 
-use crate::{vga, memory, serial_println, process};
+use crate::{vga, memory, process};
 
 const FB_START: u64 = 0x0000_7fff_0000_0000;
 

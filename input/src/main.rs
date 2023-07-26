@@ -9,7 +9,7 @@ mod handling;
 use std::ipc::{receive, Pid, notify};
 
 use alloc::vec::Vec;
-use inputs::Command;
+use input::Command;
 use pc_keyboard::{Keyboard, ScancodeSet1, layouts::Us104Key};
 
 #[no_mangle]

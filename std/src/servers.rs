@@ -1,6 +1,6 @@
 use abi::ipc::{ReadMailboxStatus, Message};
 
-use crate::{ipc::{read_mailbox_from, read_mailbox}, sys_yield};
+use crate::{ipc::read_mailbox_from, sys_yield};
 
 pub mod graphics;
 

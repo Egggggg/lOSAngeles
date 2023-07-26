@@ -1,8 +1,8 @@
-use alloc::{slice, vec::Vec};
+use alloc::vec::Vec;
 use x86_64::{structures::paging::{Page, Size4KiB}, VirtAddr};
 
 use crate::{ipc, process, serial_println, syscall::build_user_vec};
-use abi::memshare::{CreateShareStatus, JoinShareStatus, ShareId, CreateShareResponse};
+use abi::memshare::{CreateShareStatus, JoinShareStatus, CreateShareResponse};
 
 
 pub unsafe fn sys_create_memshare(start: u64, end: u64, whitelist_start: u64, whitelist_len: u64) -> CreateShareResponse {

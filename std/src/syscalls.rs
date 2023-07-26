@@ -15,7 +15,7 @@ use core::arch::asm;
 
 use abi::{ConfigRBufferStatus, Syscall};
 
-pub use abi::Status;
+pub use abi::{Status, InvalidStatusCode};
 
 pub fn exit() {
     unsafe {

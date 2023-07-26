@@ -1,10 +1,10 @@
 use abi::dev::SerialStatus;
-use alloc::{slice, string::String, vec::Vec};
+use alloc::{string::String, vec::Vec};
 
 use crate::{serial_print, syscall::build_user_vec};
 
 
-pub unsafe fn sys_send_serial(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> SerialStatus {
+pub unsafe fn sys_send_serial(rdi: u64, rsi: u64) -> SerialStatus {
     use SerialStatus::*;
 
     let text_start = rdi;

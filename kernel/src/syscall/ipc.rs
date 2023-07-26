@@ -1,8 +1,8 @@
 use abi::ipc::{SendStatus, Message, Pid, PayloadMessage, NotifyStatus, MailboxFlags, ConfigMailboxStatus, ReceiveStatus};
 
-use alloc::{slice, vec::Vec};
+use alloc::vec::Vec;
 
-use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}, println};
+use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}};
 
 use super::build_user_vec;
 

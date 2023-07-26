@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use std::{getpid, ipc::{notify, Message, receive, read_mailbox, send_message, ReadMailboxStatus, set_mailbox_enabled, set_mailbox_whitelist}, println, Status, sys_yield, exit};
+use std::{getpid, ipc::{notify, Message, receive, read_mailbox, send_message, ReadMailboxStatus, set_mailbox_enabled, set_mailbox_whitelist}, println, sys_yield, exit};
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {

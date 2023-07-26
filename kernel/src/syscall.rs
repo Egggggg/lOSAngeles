@@ -8,7 +8,7 @@ use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_S
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
 
-mod graphics;
+// mod graphics;
 mod serial;
 mod ipc;
 mod memshare;
@@ -215,32 +215,32 @@ pub unsafe fn syscall() {
         Syscall::sys_yield => {
             sys_yield(rcx);
         }
-        Syscall::draw_bitmap => {
-            let status = graphics::sys_draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
+        // Syscall::draw_bitmap => {
+        //     let status = graphics::sys_draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
 
-            ReturnRegs {
-                rax: status,
-                ..Default::default()
-            }
-        }
-        Syscall::draw_string => {
-            let status = graphics::sys_draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
+        //     ReturnRegs {
+        //         rax: status,
+        //         ..Default::default()
+        //     }
+        // }
+        // Syscall::draw_string => {
+        //     let status = graphics::sys_draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
 
-            ReturnRegs {
-                rax: status,
-                ..Default::default()
-            }
-        }
-        Syscall::print => {
-            let status = graphics::sys_print(rdi, rsi, rdx, r8, r9, sp) as u64;
+        //     ReturnRegs {
+        //         rax: status,
+        //         ..Default::default()
+        //     }
+        // }
+        // Syscall::print => {
+        //     let status = graphics::sys_print(rdi, rsi, rdx, r8, r9, sp) as u64;
 
-            ReturnRegs {
-                rax: status,
-                ..Default::default()
-            }
-        }
+        //     ReturnRegs {
+        //         rax: status,
+        //         ..Default::default()
+        //     }
+        // }
         Syscall::send_serial => {
-            let status = serial::sys_send_serial(rdi, rsi, rdx, r8, r9, sp) as u64;
+            let status = serial::sys_send_serial(rdi, rsi) as u64;
 
             ReturnRegs {
                 rax: status,

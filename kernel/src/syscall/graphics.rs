@@ -1,7 +1,7 @@
 use abi::render::{DrawBitmapStatus, DrawStringStatus};
-use alloc::{slice, string::String, vec::Vec};
+use alloc::{string::String, vec::Vec};
 
-use crate::{vga, print, serial_println, syscall::build_user_vec};
+use crate::{vga, print, syscall::build_user_vec};
 
 #[no_mangle]
 pub unsafe fn sys_draw_bitmap(rdi: u64, rsi: u64, rdx: u64, _: u64, _: u64, _: u64) -> DrawBitmapStatus {

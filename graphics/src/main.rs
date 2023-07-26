@@ -7,7 +7,7 @@ extern crate alloc;
 
 pub mod commands;
 
-use std::{ipc::{receive, send_message, notify}, println, serial_println, exit, config_rbuffer};
+use std::{ipc::{receive, notify}, serial_println, config_rbuffer};
 
 use alloc::format;
 use graphics::Command;
@@ -27,11 +27,7 @@ pub unsafe extern "C" fn _start() {
 
     loop {
         let request = receive(&[]);
-
-        // println!("[GRAPHICS] Received {:#0X?}", request);
-
         let opcode = (request.data0 >> 56) & 0xFF;
-
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
 

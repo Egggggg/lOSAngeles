@@ -34,7 +34,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "inputs"
+name = "input"
 version = "0.1.0"
 dependencies = [
  "num",
@@ -74,6 +74,7 @@ name = "losangeles"
 version = "0.1.0"
 dependencies = [
  "abi",
+ "input",
  "lazy_static",
  "limine",
  "pic8259",
