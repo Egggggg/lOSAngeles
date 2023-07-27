@@ -116,7 +116,9 @@ pub unsafe fn syscall() {
             in("rcx") rcx,
             options(noreturn),
         );
-    } ;
+    };
+
+    serial_println!("{:?}", out);
     
     let out = match out{
         Syscall::exit => {

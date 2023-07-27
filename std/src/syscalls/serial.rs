@@ -12,6 +12,7 @@ pub fn _serial_print(args: ::core::fmt::Arguments) {
     unsafe {
         asm!(
             "syscall",
+            "nop",
             in("rax") rax,
             in("rdi") output.as_ptr(),
             in("rsi") length,

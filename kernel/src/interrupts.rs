@@ -1,4 +1,4 @@
-use core::default;
+use core::{default, arch::asm};
 
 use abi::{ipc::Message, input};
 use lazy_static::lazy_static;
@@ -12,7 +12,7 @@ use x86_64::{
     instructions::{port::Port, interrupts::without_interrupts}, registers::control::Cr3,
 };
 
-use crate::{serial_print, serial_println, memory, serial::SERIAL1, ipc::notify, process::SCHEDULER};
+use crate::{serial_print, serial_println, memory::{self, HARDWARE_IST_INDEX}, serial::SERIAL1, ipc::notify, process::SCHEDULER};
 
 /// Offset used for PIC 1
 pub const PIC_1_OFFSET: u8 = 0x20;
@@ -54,7 +54,7 @@ fn init_idt() {
 }
 
 /// Initializes interrupts
-pub unsafe  fn init() {
+pub unsafe fn init() {
     serial_println!("Initializing interrupts...");
     init_idt();
 
@@ -144,7 +144,7 @@ extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFram
 #[no_mangle]
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     serial_print!(".");
-
+    
     // let mut scheduler = SCHEDULER.write();
     // let data0 = (input::Command::publish as u64) << 56;
 

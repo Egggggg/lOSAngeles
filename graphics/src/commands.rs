@@ -113,7 +113,11 @@ pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
     let PayloadMessage { pid, data0: _, data1: _, payload, payload_len } = request;
 
     let payload_ptr = payload as *const u8;
+
+    serial_println!("[GRAPHICS] Assembling string");
     let payload_bytes = unsafe { slice::from_raw_parts(payload_ptr, payload_len as usize) };
+    serial_println!("[GRAPHICS] Bytes assembled");
+
     let Ok(text) = String::from_utf8(payload_bytes.into()) else {
         return Message {
             pid,

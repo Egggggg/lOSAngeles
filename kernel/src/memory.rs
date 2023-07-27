@@ -56,7 +56,7 @@ lazy_static! {
         HHDM_REQUEST.get_response().get().unwrap()
     };
 
-    static ref TSS: TaskStateSegment = {
+    pub static ref TSS: TaskStateSegment = {
         let mut tss = TaskStateSegment::new();
 
         tss.interrupt_stack_table[DOUBLE_FAULT_IST_INDEX as usize] = {
