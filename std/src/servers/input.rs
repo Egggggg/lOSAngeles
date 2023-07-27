@@ -2,7 +2,7 @@ use abi::{Status, ipc::Message};
 
 pub use abi::input::*;
 
-use crate::{ipc::send_message, await_notif};
+use crate::{ipc::{send_message, notify}, await_notif, await_notif_from};
 
 pub fn subscribe() -> SubscribeStatus {
     let data0 = [
@@ -11,7 +11,7 @@ pub fn subscribe() -> SubscribeStatus {
     ];
     let data0 = u64::from_be_bytes(data0);
 
-    let status = send_message(Message {
+    let status = notify(Message {
         pid: 3,
         data0,
         ..Default::default()
@@ -21,7 +21,7 @@ pub fn subscribe() -> SubscribeStatus {
         panic!("Couldn't send message to input server: {:?}", status);
     }
 
-    let _ = await_notif(1, 0);
+    let _ = await_notif_from(1, 0);
 
     SubscribeStatus::Success
 }

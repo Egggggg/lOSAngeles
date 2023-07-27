@@ -1,15 +1,16 @@
 use core::arch::asm;
 
+use abi::ipc::Message;
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use spin::RwLock;
-use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}};
+use x86_64::{structures::paging::{Page, PageTableFlags, Size4KiB, PhysFrame}, VirtAddr, registers::control::{Cr3, Cr3Flags}, instructions::interrupts::{self, without_interrupts}};
 
 use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self}};
 
 mod elf;
 
-const STACK: u64 = 0x6800_0000_0000;
+const STACK_BOTTOM: u64 = 0x6800_0000_0000;
 const STACK_SIZE: u64 = 4096 * 5;
 
 lazy_static! {
@@ -101,8 +102,8 @@ impl Scheduler {
             }
         };
     
-        let stack_start = VirtAddr::new(STACK);
-        let stack_end = VirtAddr::new(STACK + STACK_SIZE - 64);
+        let stack_start = VirtAddr::new(STACK_BOTTOM);
+        let stack_end = VirtAddr::new(STACK_BOTTOM + STACK_SIZE - 64);
         let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
     
         memory::map_area(stack_start, stack_end, flags).unwrap();
@@ -200,20 +201,37 @@ impl ReturnRegs {
 }
 
 pub fn run_next() -> ! {
-    {
+    without_interrupts(|| {
         let mut scheduler = SCHEDULER.write();
         unsafe { scheduler.next().unwrap() };
-    }
+    });
 
     run_process();
 }
 
 pub fn run_process() -> ! {
-    let (cr3, pc, state) = unsafe {
-        let mut scheduler = SCHEDULER.read();
+    interrupts::disable();
+
+    let (cr3, pc, state) = {
+        let scheduler = SCHEDULER.read();
         let process = &scheduler.queue[0];
         (process.cr3, process.pc, process.reg_state)
     };
+
+    interrupts::enable();
+
+    // unsafe {
+    //     let sp: u64;
+
+    //     asm!(
+    //         "swapgs",
+    //         "mov {}, gs:0",
+    //         "swapgs",
+    //         out(reg) sp,
+    //     );
+
+    //     serial_println!("[PROCESS] Resuming SP: {}", sp);
+    // }
 
     unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
 
@@ -236,7 +254,6 @@ pub fn run_process() -> ! {
 #[no_mangle]
 pub unsafe extern "C" fn _sysret_asm() {
     asm!(
-        // "mov gs:0, rsp",    // back up the stack pointer
         "swapgs",   // switch to user gs
         "mov rsp, gs:0",    // load user stack
         "mov r11, $0x200",  // set `IF` flag in `rflags` (bit 9)

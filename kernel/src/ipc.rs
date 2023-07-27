@@ -2,7 +2,7 @@ pub mod memshare;
 
 use abi::ipc::{Message, PayloadMessage, SendStatus, NotifyStatus, RESPONSE_BUFFER, ReadMailboxStatus};
 use alloc::{vec::Vec, slice, borrow::ToOwned, collections::VecDeque};
-use x86_64::registers::control::{Cr3, Cr3Flags};
+use x86_64::{registers::control::{Cr3, Cr3Flags}, instructions::interrupts::without_interrupts};
 
 use crate::{process::{Pid, ReturnRegs, SCHEDULER, ExecState, Scheduler, Process}, serial_println, println, syscall::build_user_vec};
 
@@ -119,15 +119,17 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
 }
 
 pub fn receive_message(recipient: Pid, whitelist: Vec<Pid>) {
-    let mut scheduler = SCHEDULER.write();
-    let processes = &mut scheduler.queue;
-
-    let Some(ref mut process) = processes.iter_mut().find(|p| p.pid == recipient) else {
-        return;
-    };
-
-    process.message_handler.await_message(whitelist);
-    process.exec_state = ExecState::WaitingIpc;
+    without_interrupts(|| {
+        let mut scheduler = SCHEDULER.write();
+        let processes = &mut scheduler.queue;
+    
+        let Some(ref mut process) = processes.iter_mut().find(|p| p.pid == recipient) else {
+            return;
+        };
+    
+        process.message_handler.await_message(whitelist);
+        process.exec_state = ExecState::WaitingIpc;
+    });
 }
 
 /// Sends a notification to the target process.
@@ -159,7 +161,7 @@ pub fn notify(sender_pid: Pid, message: Message, scheduler: &mut Scheduler) -> N
     NotifyStatus::Success
 }
 
-pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
+pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid, filter: bool) -> ReturnRegs {
     if !recipient.message_handler.mailbox.enabled {
         return ReturnRegs {
             rax: ReadMailboxStatus::Disabled as u64,
@@ -176,7 +178,7 @@ pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
         };
     }
 
-    let message = if sender_pid != 0 {
+    let message = if filter {
         let Some(idx) = notifs.iter().position(|p| p.pid == sender_pid) else {
             return ReturnRegs {
                 rax: ReadMailboxStatus::NoMessages as u64,
@@ -200,7 +202,6 @@ pub fn read_mailbox(recipient: &mut Process, sender_pid: Pid) -> ReturnRegs {
         r9: message.data3,
     }
 }
-
 
 pub unsafe fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: &mut Scheduler) -> Result<MessageState, SendStatus> {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = message;

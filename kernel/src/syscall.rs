@@ -1,6 +1,6 @@
 use core::arch::asm;
 use alloc::{slice, vec::Vec};
-use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel};
+use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel, instructions::interrupts::{without_interrupts, self}};
 
 use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER, ResponseBuffer}, syscall::dev::sys_request_fb};
 use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE, ReceiveStatus}};
@@ -107,7 +107,7 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 3: {:#018X}", rdx);
     // serial_println!("Syscall arg 4: {:#018X}", r8);
     // serial_println!("Syscall arg 5: {:#018X}", r9);
-    // serial_println!("Syscall arg 6: {:#018X} (stack)", sp);
+    serial_println!("[SYSCALL] Stack: {:#018X}", sp);
 
     let Ok(out): Result<Syscall, _> = number.try_into() else {
         asm!(
@@ -160,7 +160,7 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::read_mailbox => {
-            ipc::sys_read_mailbox(rdi)
+            ipc::sys_read_mailbox(rdi, rsi)
         }
         Syscall::config_mailbox => {
             let status = ipc::sys_config_mailbox(rdi, rsi, rdx);
@@ -215,30 +215,6 @@ pub unsafe fn syscall() {
         Syscall::sys_yield => {
             sys_yield(rcx);
         }
-        // Syscall::draw_bitmap => {
-        //     let status = graphics::sys_draw_bitmap(rdi, rsi, rdx, r8, r9, sp) as u64;
-
-        //     ReturnRegs {
-        //         rax: status,
-        //         ..Default::default()
-        //     }
-        // }
-        // Syscall::draw_string => {
-        //     let status = graphics::sys_draw_string(rdi, rsi, rdx, r8, r9, sp) as u64;
-
-        //     ReturnRegs {
-        //         rax: status,
-        //         ..Default::default()
-        //     }
-        // }
-        // Syscall::print => {
-        //     let status = graphics::sys_print(rdi, rsi, rdx, r8, r9, sp) as u64;
-
-        //     ReturnRegs {
-        //         rax: status,
-        //         ..Default::default()
-        //     }
-        // }
         Syscall::send_serial => {
             let status = serial::sys_send_serial(rdi, rsi) as u64;
 
@@ -268,7 +244,7 @@ pub unsafe fn syscall() {
 fn sys_exit() -> ! {
     println!("Process exited");
     
-    {        
+    without_interrupts(|| {        
         let mut scheduler = process::SCHEDULER.write();
         scheduler.queue.rotate_left(1);
         scheduler.queue.pop();
@@ -276,7 +252,7 @@ fn sys_exit() -> ! {
         if scheduler.queue.len() == 0 {
             loop {}
         }
-    }
+    });
 
     process::run_next();
 }
@@ -294,13 +270,15 @@ unsafe fn sys_config_rbuffer(size: u64) -> ConfigRBufferStatus {
 
     memory::map_area(start, end, flags).unwrap();
 
-    let mut scheduler = SCHEDULER.write();
-    let process = scheduler.get_current().unwrap();
-    
-    match process.response_buffer {
-        Some(ref mut rb) => rb.size = size,
-        None => process.response_buffer = Some(ResponseBuffer { size }),
-    }
+    without_interrupts(|| {
+        let mut scheduler = SCHEDULER.write();
+        let process = scheduler.get_current().unwrap();
+        
+        match process.response_buffer {
+            Some(ref mut rb) => rb.size = size,
+            None => process.response_buffer = Some(ResponseBuffer { size }),
+        }
+    });
 
     ConfigRBufferStatus::Success
 }
@@ -311,10 +289,13 @@ struct GetPidResponse {
 }
 
 fn sys_getpid(rdi: u64) -> GetPidResponse {
-    let scheduler = process::SCHEDULER.read();
-    
     if rdi == 0 {
+        interrupts::disable();
+
+        let scheduler = process::SCHEDULER.read();
         let pid = scheduler.queue.get(0).unwrap().pid;
+
+        interrupts::enable();
 
         GetPidResponse {
             status: 0,
@@ -329,12 +310,12 @@ fn sys_getpid(rdi: u64) -> GetPidResponse {
 }
 
 fn sys_yield(rcx: *const ()) -> ! {
-    {
+    without_interrupts(|| {
         let mut scheduler = process::SCHEDULER.write();
         let current = scheduler.get_current().unwrap();
         current.reg_state.rax = 0;
         current.pc = rcx as u64;
-    }
+    });
 
     process::run_next();
 }

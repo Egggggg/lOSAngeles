@@ -1,6 +1,6 @@
 use std::{ipc::{Message, PayloadMessage}, graphics::{DrawBitmapStatus, DrawStringStatus}, serial_println};
 
-use alloc::{slice, string::String};
+use alloc::{slice, string::String, format};
 
 use crate::{drawing, font::{FONT, self}, tty::Tty};
 
@@ -18,6 +18,7 @@ pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let width = data1_bytes[6] as u16 | ((data1_bytes[7] as u16) << 8);
     let height = data1_bytes[4] as u16 | ((data1_bytes[5] as u16) << 8);
     let scale = data1_bytes[0] as u8;
+
 
     if width as u64 * height as u64 != payload_len {
         return Message {

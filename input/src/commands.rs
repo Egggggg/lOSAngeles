@@ -1,4 +1,4 @@
-use std::ipc::{Message, Pid, notify};
+use std::{ipc::{Message, Pid, notify}, print};
 
 use alloc::vec::Vec;
 use std::input::{PublishStatus, SubscribeStatus};
@@ -30,6 +30,8 @@ pub fn publish<T: KeyboardLayout, S: ScancodeSet>(request: Message, keyboard: &m
     let state_bit = if key.state == KeyState::Down { 0x100 } else { 0x100 };
 
     let data1 = (key.code as u8 as u64) | state_bit;
+
+    print!("{:?}", key.code);
 
     for s in subscribers.iter() {
         notify(Message {

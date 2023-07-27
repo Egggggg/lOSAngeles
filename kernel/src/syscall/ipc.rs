@@ -1,6 +1,7 @@
 use abi::ipc::{SendStatus, Message, Pid, PayloadMessage, NotifyStatus, MailboxFlags, ConfigMailboxStatus, ReceiveStatus};
 
 use alloc::vec::Vec;
+use x86_64::instructions::interrupts;
 
 use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}};
 
@@ -12,10 +13,14 @@ use super::build_user_vec;
 /// 
 /// Returns Some if the message send completed, or None if the recipient was not yet ready
 pub fn sys_send(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> Option<SendStatus> {
+    interrupts::disable();
+
     let from = SCHEDULER.read().queue.get(0).unwrap().pid;
     let scheduler = &mut SCHEDULER.write();
 
     if let Some(state) = ipc::send_message(from, Message { pid, data0, data1, data2, data3 }, scheduler) {
+        interrupts::enable();
+
         match state {
             MessageState::Received
             | MessageState::Blocked => Some(SendStatus::Success),
@@ -23,6 +28,8 @@ pub fn sys_send(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> Opt
             e => panic!("sys_send is {:?}", e),
         }
     } else {
+        interrupts::enable();
+
         Some(SendStatus::InvalidRecipient)
     }
 }
@@ -30,7 +37,12 @@ pub fn sys_send(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> Opt
 
 /// Blocks until a message is received from a whitelisted process
 pub unsafe fn sys_receive(whitelist_start: u64, whitelist_len: u64) -> ReceiveStatus {
+    interrupts::disable();
+
     let pid = SCHEDULER.read().queue.get(0).unwrap().pid;
+
+    interrupts::enable();
+
     let Ok(whitelist): Result<Vec<u64>, _> = build_user_vec(whitelist_start, whitelist_len as usize) else {
         return ReceiveStatus::InvalidWhitelist;    
     };
@@ -41,18 +53,30 @@ pub unsafe fn sys_receive(whitelist_start: u64, whitelist_len: u64) -> ReceiveSt
 
 /// Sends a message to the mailbox of the target process without blocking
 pub fn sys_notify(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> NotifyStatus {
+    interrupts::disable();
+
     let mut scheduler = SCHEDULER.write();
     let sender_pid = scheduler.queue.get(0).unwrap().pid;
 
-    ipc::notify(sender_pid, Message { pid, data0, data1, data2, data3 }, &mut scheduler)
+    let status = ipc::notify(sender_pid, Message { pid, data0, data1, data2, data3 }, &mut scheduler);
+
+    interrupts::enable();
+
+    status
 }
 
 /// Reads the newest message from the mailbox, or returns an error if there is none
-pub fn sys_read_mailbox(sender_pid: Pid) -> ReturnRegs {
+pub fn sys_read_mailbox(sender_pid: Pid, filter: u64) -> ReturnRegs {
+    interrupts::disable();
+
     let mut scheduler = SCHEDULER.write();
     let recipient = scheduler.get_current().unwrap();
 
-    ipc::read_mailbox(recipient, sender_pid)
+    let regs = ipc::read_mailbox(recipient, sender_pid, filter > 0);
+
+    interrupts::enable();
+
+    regs
 }
 
 /// Configures the mailbox of the current process
@@ -60,6 +84,9 @@ pub fn sys_read_mailbox(sender_pid: Pid) -> ReturnRegs {
 /// If the `enable` flag (flags.0) is unset, the whitelist won't be changed
 pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: u64) -> ConfigMailboxStatus {
     let flags: MailboxFlags = flags.into();
+
+    interrupts::disable();
+
     let mut scheduler = SCHEDULER.write();
     let process = scheduler.get_current().unwrap();
     let mailbox = &mut process.message_handler.mailbox;
@@ -74,6 +101,8 @@ pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: 
         mailbox.whitelist = whitelist;
     }
 
+    interrupts::enable();
+
     ConfigMailboxStatus::Success
 }
 
@@ -81,10 +110,15 @@ pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: 
 /// 
 /// Follows the same rules as `send`
 pub fn sys_send_payload(pid: Pid, data0: u64, data1: u64, payload: u64, payload_len: u64) -> Option<SendStatus> {
+    interrupts::disable();
+
     let from = SCHEDULER.read().queue.get(0).unwrap().pid;
     let scheduler = &mut SCHEDULER.write();
+    let state = unsafe { ipc::send_payload(from, PayloadMessage { pid, data0, data1, payload, payload_len }, scheduler) };
+    
+    interrupts::enable();
 
-    match unsafe { ipc::send_payload(from, PayloadMessage { pid, data0, data1, payload, payload_len }, scheduler) } {
+    match state {
         Ok(state) => match state {
             MessageState::Received
             | MessageState::Blocked => Some(SendStatus::Success),

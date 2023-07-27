@@ -53,9 +53,6 @@ pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, 
                         let mut current = unsafe { base.offset(offset as isize) };
 
                         for _ in 0..scale {
-                            // println!("({}, {}).{}", col, row, bit);
-                            // println!("{:#018b}", color);
-                            // println!("{:p}", current);
                             unsafe {
                                 current.write(color);
                                 current = current.offset(1);

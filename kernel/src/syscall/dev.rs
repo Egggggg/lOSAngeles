@@ -1,5 +1,5 @@
 use abi::dev::{RequestFbStatus, FramebufferDescriptor};
-use x86_64::{structures::paging::{Page, Mapper, PageTableFlags, mapper::TranslateError, Size4KiB, Size2MiB}, VirtAddr};
+use x86_64::{structures::paging::{Page, Mapper, PageTableFlags, mapper::TranslateError, Size4KiB, Size2MiB}, VirtAddr, instructions::interrupts::{without_interrupts, self}};
 
 use crate::{vga, memory, process};
 
@@ -7,13 +7,18 @@ const FB_START: u64 = 0x0000_7fff_0000_0000;
 
 pub fn sys_request_fb(descriptor_ptr: u64) -> RequestFbStatus {
     {
+        interrupts::disable();
+
         let scheduler = process::SCHEDULER.read();
         let p = scheduler.queue.get(0).unwrap();
     
         if !p.privileged {
             return RequestFbStatus::NotAllowed;
         }
+
+        interrupts::enable();
     }
+
 
     let fb = &vga::FB;
     let size = fb.pitch * fb.height;

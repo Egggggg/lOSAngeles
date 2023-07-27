@@ -9,7 +9,7 @@ use x86_64::{
         InterruptStackFrame,
         PageFaultErrorCode
     }, paging::{Page, PageTableFlags}},
-    instructions::port::Port, registers::control::Cr3,
+    instructions::{port::Port, interrupts::without_interrupts}, registers::control::Cr3,
 };
 
 use crate::{serial_print, serial_println, memory, serial::SERIAL1, ipc::notify, process::SCHEDULER};
@@ -96,16 +96,16 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     use x86_64::registers::control::Cr2;
 
     let addr = Cr2::read();
-    // serial_println!("page fault for addr {:#018X}", addr);
+    serial_println!("page fault for addr {:#018X}", addr);
 
-    let (cr3, _) = Cr3::read();
+    loop {}
 
     unsafe { SERIAL1.force_unlock() };
 
     // serial_println!("pml4 @ {:#018X}", cr3.start_address());
 
-    // if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
-    if !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
+    if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
+    // if !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
         // serial_println!("Allocating page...");
         // serial_println!("Error: {:?}", error_code);
 
@@ -114,7 +114,7 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
         unsafe { memory::map_page(page, flags).unwrap() };
 
-        // serial_println!("Page allocated");
+        serial_println!("[KERNEL] Page allocated");
         return;
     }
 
@@ -145,25 +145,48 @@ extern "x86-interrupt" fn invalid_opcode_handler(stack_frame: InterruptStackFram
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
     serial_print!(".");
 
+    // let mut scheduler = SCHEDULER.write();
+    // let data0 = (input::Command::publish as u64) << 56;
+
+    // notify(0, Message {
+    //     pid: 3,
+    //     data0,
+    //     ..Default::default()
+    // }, &mut scheduler);
+
+    // if let Some(mail) = &scheduler.queue.iter().find(|p| p.pid == 3) {
+    //     let notifs = &mail.message_handler.mailbox.notifs;
+    //     serial_println!("[TIMER] Notified input server: {:?}", notifs);
+    // }
+
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 
+#[no_mangle]
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
 
-    let data0 = ((input::Command::publish as u64) << 56) | scancode as u64;
-    let mut scheduler = SCHEDULER.write();
-
-    notify(, Message {
-        pid: 3,
-        data0,
-        ..Default::default()
-    }, &mut scheduler);
-
     serial_print!("Key");
+
+    let data0 = ((input::Command::publish as u64) << 56) | scancode as u64;
+
+    serial_println!("[KERNEL] Notifying input server");
+
+    without_interrupts(|| {
+        let mut scheduler = SCHEDULER.write();
+
+        notify(0, Message {
+            pid: 3,
+            data0,
+            ..Default::default()
+        }, &mut scheduler);
+    
+        let mail = &scheduler.queue.iter().find(|p| p.pid == 3).unwrap().message_handler.mailbox.notifs;    
+        serial_println!("[KERNEL] Notified input server: {:?}", mail);
+    });
 
     unsafe {
         PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());

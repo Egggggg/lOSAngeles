@@ -1,5 +1,5 @@
 use alloc::vec::Vec;
-use x86_64::{structures::paging::{Page, Size4KiB}, VirtAddr};
+use x86_64::{structures::paging::{Page, Size4KiB}, VirtAddr, instructions::interrupts};
 
 use crate::{ipc, process, serial_println, syscall::build_user_vec};
 use abi::memshare::{CreateShareStatus, JoinShareStatus, CreateShareResponse};
@@ -14,7 +14,9 @@ pub unsafe fn sys_create_memshare(start: u64, end: u64, whitelist_start: u64, wh
         return CreateShareStatus::UnalignedEnd.into();
     };
 
+    interrupts::disable();
     let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
+    interrupts::enable();
 
     let Ok(whitelist): Result<Vec<u64>, _> = build_user_vec(whitelist_start, whitelist_len as usize) else {
         return CreateShareResponse {
@@ -40,7 +42,9 @@ pub unsafe fn sys_join_memshare(id: u64, start: u64, end: u64, blacklist_start: 
         return JoinShareStatus::UnalignedEnd;
     };
 
+    interrupts::disable();
     let pid = process::SCHEDULER.read().queue.get(0).unwrap().pid;
+    interrupts::enable();
 
     let Ok(blacklist): Result<Vec<u64>, _> = build_user_vec(blacklist_start, blacklist_len as usize) else {
         return JoinShareStatus::OutOfBounds;

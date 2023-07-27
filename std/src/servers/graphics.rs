@@ -3,7 +3,7 @@ use abi::{ipc::PayloadMessage, Status};
 pub use abi::render::{DrawBitmapStatus, DrawStringStatus};
 use alloc::fmt;
 
-use crate::{ipc::send_payload, println, await_notif, serial_println};
+use crate::{ipc::send_payload, println, serial_println, await_notif_from, getpid};
 
 pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height: u16, scale: u8) -> DrawBitmapStatus {
     if width as usize * height as usize != bitmap.len() {
@@ -44,7 +44,7 @@ pub fn draw_bitmap(bitmap: &[u8], x: u16, y: u16, color: u16, width: u16, height
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let Ok(msg) = await_notif(1, 0) else {
+    let Ok(msg) = await_notif_from(1, 0) else {
         return DrawBitmapStatus::None;
     };
 
@@ -79,7 +79,7 @@ pub fn draw_string(text: &str, x: u16, y: u16, color: u16, scale: u8) -> DrawStr
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let Ok(msg) = await_notif(1, 0) else {
+    let Ok(msg) = await_notif_from(1, 0) else {
         return DrawStringStatus::None;
     };
 
@@ -93,7 +93,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
     let output = fmt::format(args);
 
     let data0 = [
-        Command::draw_bitmap as u8,
+        Command::print as u8,
         0, 0, 0, 0, 0, 0, 0
     ];
     let data0 = u64::from_be_bytes(data0);
@@ -101,7 +101,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
     let payload = output.as_ptr() as u64;
     let payload_len = output.len() as u64;
 
-    serial_println!("[2] Printing");
+    serial_println!("[{}] Printing {}", getpid(), output);
 
     let status = send_payload(PayloadMessage {
         pid: 1,
@@ -115,7 +115,7 @@ pub fn _print(args: ::core::fmt::Arguments) {
         panic!("Couldn't send message to graphics server: {:?}", status);
     }
 
-    let _ = await_notif(1, 0);
+    let _ = await_notif_from(1, 0);
 }
 
 /// Prints to the host through the serial interface

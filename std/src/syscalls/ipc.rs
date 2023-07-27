@@ -33,7 +33,7 @@ pub fn send_message(message: Message) -> SendStatus {
 pub fn receive(whitelist: &[Pid]) -> Message {
     let rax = Syscall::receive as u64;
 
-    let status: u64;
+    // let status: u64;
     let pid: Pid;
     let data0: u64;
     let data1: u64;
@@ -46,7 +46,7 @@ pub fn receive(whitelist: &[Pid]) -> Message {
             in("rax") rax,
             in("rdi") whitelist.as_ptr(),
             in("rsi") whitelist.len(),
-            lateout("rax") status,
+            // lateout("rax") status,
             lateout("rdi") pid,
             lateout("rsi") data0,
             lateout("rdx") data1,
@@ -55,7 +55,9 @@ pub fn receive(whitelist: &[Pid]) -> Message {
         );
     }
 
-    serial_println!("Receive status: {}", status);
+    // serial_println!("Receive status: {}", status);
+    // serial_println!("data0: {}", data0);
+    serial_println!("");
 
     Message { pid, data0, data1, data2, data3 }
 }
@@ -84,14 +86,20 @@ pub fn notify(message: Message) -> NotifyStatus {
 
 // Reads the oldest message from the mailbox
 pub fn read_mailbox() -> (ReadMailboxStatus, Option<Message>) {
-    read_mailbox_from(0)
+    read_mailbox_inner(0, false)
+}
+
+pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>) {
+    read_mailbox_inner(sender_pid, true)
 }
 
 /// Reads the oldest message from the mailbox
 /// 
 /// Can filter to messages from a specific PID, or 0 for any
-pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>) {
+pub fn read_mailbox_inner(sender_pid: Pid, filter: bool) -> (ReadMailboxStatus, Option<Message>) {
     let rax = Syscall::read_mailbox as u64;
+    let rdi = sender_pid;
+    let rsi: u64 = if filter { 1 } else { 0 };
 
     let status: u64;
     let pid: Pid;
@@ -104,7 +112,8 @@ pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>
         asm!(
             "syscall",
             in("rax") rax,
-            in("rdi") sender_pid,
+            in("rdi") rdi,
+            in("rsi") rsi,
             lateout("rax") status,
             lateout("rdi") pid,
             lateout("rsi") data0,
@@ -114,11 +123,9 @@ pub fn read_mailbox_from(sender_pid: Pid) -> (ReadMailboxStatus, Option<Message>
         );
     }
 
-    serial_println!("Receive status: {}", status);
-
     let status: ReadMailboxStatus = status.try_into().unwrap();
 
-    serial_println!("{:?}", status);
+    // serial_println!("Receive status: {:?}", status);
 
     if status.is_err() {
         (status, None)

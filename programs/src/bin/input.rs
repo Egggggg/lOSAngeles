@@ -3,7 +3,7 @@
 
 extern crate alloc;
 
-use std::{input, await_notif, println, getpid, ipc::{set_mailbox_enabled, set_mailbox_whitelist}, graphics::draw_string};
+use std::{input, println, getpid, ipc::{set_mailbox_enabled, set_mailbox_whitelist}, graphics::draw_string, await_notif_from};
 
 use alloc::format;
 
@@ -16,13 +16,13 @@ pub unsafe extern "C" fn _start() {
     draw_string(&format!("[{}] Started", getpid()), 300, 400, 0xFF80, 1);
     
     loop {
-        let notif = await_notif(3, 0);
+        let notif = await_notif_from(3, 0);
         
         match notif {
             Ok((status, msg)) => {
                 println!("[{}] {:?} {:?}", getpid(), status, msg);
             }
-            Err(_) => panic!("Failure"),
+            Err(status) => panic!("Failure: {:?}", status),
         }
     }
 }
