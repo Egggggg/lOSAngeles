@@ -18,10 +18,12 @@ pub unsafe extern "C" fn _start() {
     let mut keyboard = Keyboard::new(ScancodeSet1::new(), Us104Key, pc_keyboard::HandleControl::Ignore);
 
     set_mailbox_enabled(true);
-    println!("gup");
+    // println!("gup");
+
+    let mut counter = 0;
 
     loop {
-        let (status, request) = await_notif(0).unwrap();
+        let (status, request) = await_notif_from(0, 0).unwrap();
 
         if status.is_err() {
             // println!("[{}] Error: {:?}", getpid(), status);
@@ -30,21 +32,20 @@ pub unsafe extern "C" fn _start() {
 
         let request = request.unwrap();
 
-        // println!("{:?}", status);
-
         let opcode = (request.data0 >> 56) & 0xFF;
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("[INPUT] Invalid command: {:#04X}", opcode);
         };
 
-        // println!("{:?}", command);
-        // print!("e");
+        print!("{:04}", counter);
+        print!(" ");
+        counter += 1;
 
         let response = match command {
             Command::publish => commands::publish(request, &mut keyboard, &subscribers),
             Command::subscribe => commands::subscribe(request, &mut subscribers),
         };
 
-        notify(response);
+        // notify(response);
     }
 }

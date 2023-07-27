@@ -100,8 +100,6 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
     loop {}
 
-    unsafe { SERIAL1.force_unlock() };
-
     // serial_println!("pml4 @ {:#018X}", cr3.start_address());
 
     if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
