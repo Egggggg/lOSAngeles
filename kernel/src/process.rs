@@ -89,7 +89,7 @@ impl Scheduler {
                 let contents = include_bytes!("../../target/programs/current1.elf");
                 let pid = self.next_pid;
                 self.next_pid += 1;
-                
+
                 (pid, elf::load_elf(contents).unwrap())
             }
             Program::Graphics => {
@@ -210,28 +210,20 @@ pub fn run_next() -> ! {
 }
 
 pub fn run_process() -> ! {
+    serial_println!("[PROCESS] Boutta run this program");
+
     interrupts::disable();
 
     let (cr3, pc, state) = {
         let scheduler = SCHEDULER.read();
         let process = &scheduler.queue[0];
+
+        serial_println!("[PROCESS] Exec {}", process.pid);
+
         (process.cr3, process.pc, process.reg_state)
     };
 
     interrupts::enable();
-
-    // unsafe {
-    //     let sp: u64;
-
-    //     asm!(
-    //         "swapgs",
-    //         "mov {}, gs:0",
-    //         "swapgs",
-    //         out(reg) sp,
-    //     );
-
-    //     serial_println!("[PROCESS] Resuming SP: {}", sp);
-    // }
 
     unsafe { Cr3::write(cr3, Cr3Flags::empty()) };
 

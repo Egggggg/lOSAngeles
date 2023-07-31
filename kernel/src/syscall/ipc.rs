@@ -3,7 +3,7 @@ use abi::ipc::{SendStatus, Message, Pid, PayloadMessage, NotifyStatus, MailboxFl
 use alloc::vec::Vec;
 use x86_64::instructions::interrupts;
 
-use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs}};
+use crate::{ipc::{MessageState, self}, process::{SCHEDULER, ReturnRegs, self}, serial_println};
 
 use super::build_user_vec;
 
@@ -17,19 +17,34 @@ pub fn sys_send(pid: Pid, data0: u64, data1: u64, data2: u64, data3: u64) -> Opt
 
     let from = SCHEDULER.read().queue.get(0).unwrap().pid;
     let scheduler = &mut SCHEDULER.write();
+    let state = ipc::send_message(from, Message { pid, data0, data1, data2, data3 }, scheduler);
 
-    if let Some(state) = ipc::send_message(from, Message { pid, data0, data1, data2, data3 }, scheduler) {
-        interrupts::enable();
-
+    if let Some(state) = state {
         match state {
-            MessageState::Received
-            | MessageState::Blocked => Some(SendStatus::Success),
-            MessageState::Waiting => None,
+            MessageState::Received => {
+                {
+                    let sender = scheduler.queue.iter_mut().find(|p| p.pid == from).unwrap();
+                    sender.reg_state = ReturnRegs {
+                        rax: SendStatus::Success as u64,
+                        ..Default::default()
+                    };
+                }
+
+                let scheduler = 0;
+
+                process::run_process();
+            },
+            MessageState::Blocked => {
+                interrupts::enable();
+                Some(SendStatus::Blocked)
+            },
+            MessageState::Waiting => {
+                interrupts::enable();
+                None
+            },
             e => panic!("sys_send is {:?}", e),
         }
     } else {
-        interrupts::enable();
-
         Some(SendStatus::InvalidRecipient)
     }
 }
@@ -109,21 +124,38 @@ pub unsafe fn sys_config_mailbox(flags: u64, whitelist_ptr: u64, whitelist_len: 
 /// Sets a payload message to be sent to the process with PID `pid`
 /// 
 /// Follows the same rules as `send`
-pub fn sys_send_payload(pid: Pid, data0: u64, data1: u64, payload: u64, payload_len: u64) -> Option<SendStatus> {
+pub fn sys_send_payload(pid: Pid, data0: u64, data1: u64, payload: u64, payload_len: u64) -> Option<(SendStatus)> {
     interrupts::disable();
 
     let from = SCHEDULER.read().queue.get(0).unwrap().pid;
-    let scheduler = &mut SCHEDULER.write();
-    let state = unsafe { ipc::send_payload(from, PayloadMessage { pid, data0, data1, payload, payload_len }, scheduler) };
-    
-    interrupts::enable();
+    let state = {
+        let scheduler = &mut SCHEDULER.write();
+        unsafe { ipc::send_payload(from, PayloadMessage { pid, data0, data1, payload, payload_len }, scheduler) }
+    };
 
     match state {
         Ok(state) => match state {
-            MessageState::Received
-            | MessageState::Blocked => Some(SendStatus::Success),
-            MessageState::Waiting => None,
-            e => panic!("sys_send is {:?}", e),
+            MessageState::Received => {
+                {
+                    let scheduler = &mut SCHEDULER.write();
+                    let sender = scheduler.queue.iter_mut().find(|p| p.pid == from).unwrap();
+                    sender.reg_state = ReturnRegs {
+                        rax: SendStatus::Success as u64,
+                        ..Default::default()
+                    };
+                }
+    
+                process::run_process();
+            },
+            MessageState::Blocked => {
+                interrupts::enable();
+                Some(SendStatus::Blocked)
+            },
+            MessageState::Waiting => {
+                interrupts::enable();
+                None
+            },
+            e => panic!("sys_send_payload is {:?}", e),
         }
         Err(status) => {
             Some(status)

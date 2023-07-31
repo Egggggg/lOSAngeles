@@ -1,10 +1,11 @@
-use std::dev::{FramebufferDescriptor, request_fb};
+use core::arch::asm;
+use std::{dev::{FramebufferDescriptor, request_fb}, serial_print, serial_println, serial::serial_print};
 
-use alloc::vec::Vec;
+use alloc::{vec::Vec, borrow::ToOwned};
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-use crate::font::{FONT, self};
+use crate::font::{self, Font};
 
 lazy_static! {
     pub static ref FB: FramebufferDescriptor = {
@@ -25,6 +26,7 @@ lazy_static! {
 /// Draws a bitmap to the screen
 /// `width` is the width in bytes, _not_ pixels
 /// `size` scales linearly in both directions
+#[inline(always)]
 pub fn draw_bitmap(bitmap: &[u8], x: usize, y: usize, color: u16, width: usize, height: usize, scale: usize) {
     // TODO: Use the place of the rightmost 1 bit instead of width
     if x + width * 8 * scale >= FB.width as usize {
@@ -93,10 +95,19 @@ pub unsafe fn shift_up(amount: usize) {
     DOUBLE_BUFFER.lock()[bottom..].fill(0);
 }
 
-pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16) {
-    for (i, c) in text.chars().enumerate() {
-        let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
+pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16, font: &Font) {
+    serial_println!("[GRAPHICS/DRAWING] Text length: {}", text.len());
 
-        draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
+    for i in 0..text.len() {
+        let e = i;
+    }
+
+    for c in text.chars() {
+        let bitmap = font.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
+
+        serial_print("[GRAPHICS/DRAWING] gooba 69".to_owned());
+
+        // serial_print!("[GRAPHICS/DRAWING] {}", c);
+        // draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
     }
 }

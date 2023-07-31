@@ -9,14 +9,7 @@ pub const FALLBACK_CHAR: [u8; 16] = [
     0xFF, 0xFF, 0xFF, 0xFF
 ];
 
-lazy_static! {
-    pub static ref FONT: Font = {
-        let psf = include_bytes!("./font/cp850-8x16.psfu");
-        unpack_psf(psf)
-    };
-}
-
-fn unpack_psf(psf: &[u8]) -> Font {
+pub fn unpack_psf(psf: &[u8]) -> Font {
     let magic: u32 = psf.chunks(4).map(
         |chunk| {
             u32::from_le_bytes(chunk.try_into().unwrap())
@@ -68,10 +61,12 @@ pub struct Font {
 
 impl Font {
     pub fn get_char(&self, character: char) -> Option<&[u8]> {
-        if character.is_ascii() {
-            Some(self.glyphs[character as usize].as_slice())
-        } else {
-            None
-        }
+        // if character.is_ascii() {
+        //     Some(self.glyphs[character as usize].as_slice())
+        // } else {
+        //     None
+        // }
+
+        None
     }
 }

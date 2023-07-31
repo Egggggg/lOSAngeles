@@ -88,9 +88,11 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
 
     let processes = &mut scheduler.queue;
 
-    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == pid) else {
+    let Some(recipient_index) = processes.iter().position(|p| p.pid == pid) else {
         return None;
     };
+
+    let recipient = &mut processes[recipient_index];
 
     match recipient.message_handler.receive_message(sender_pid, data0, data1, data2, data3) {
         MessageState::Receivable(regs) => {
@@ -98,11 +100,11 @@ pub fn send_message(sender_pid: Pid, message: Message, scheduler: &mut Scheduler
             recipient.exec_state = ExecState::Running;
             recipient.message_handler.state = MessageHandlerState::Idle;
 
-            // stop borrowing `processes`
-            let recipient = 0;
-        
-            let sender = processes.iter_mut().find(|p| p.pid == sender_pid).unwrap();
+            let sender_index = processes.iter().position(|p| p.pid == sender_pid).unwrap();
 
+            processes.swap(recipient_index, sender_index);
+
+            let sender = &mut processes[sender_index];
             sender.exec_state = ExecState::Running;
             sender.message_handler.state = MessageHandlerState::Idle;
 
@@ -123,7 +125,7 @@ pub fn receive_message(recipient: Pid, whitelist: Vec<Pid>) {
         let mut scheduler = SCHEDULER.write();
         let processes = &mut scheduler.queue;
     
-        let Some(ref mut process) = processes.iter_mut().find(|p| p.pid == recipient) else {
+        let Some(process) = processes.iter_mut().find(|p| p.pid == recipient) else {
             return;
         };
     
@@ -208,9 +210,11 @@ pub unsafe fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: 
 
     let processes = &mut scheduler.queue;
 
-    let Some(ref mut recipient) = processes.iter_mut().find(|p| p.pid == pid) else {
+    let Some(recipient_index) = processes.iter().position(|p| p.pid == pid) else {
         return Err(SendStatus::InvalidRecipient);
     };
+
+    let recipient = &mut processes[recipient_index];
 
     if recipient.response_buffer.is_none() {
         return Err(SendStatus::NoResponseBuffer);
@@ -239,21 +243,21 @@ pub unsafe fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: 
                     payload_ptr = payload_ptr.offset(1);
                 }
             }
+            
 
-            let pid = recipient.pid;
+            let sender_index = processes.iter().position(|p| p.pid == sender_pid).unwrap();
 
-            // stop borrowing `processes`
-            let recipient = 0;
 
-            let sender = processes.iter_mut().find(|p| p.pid == sender_pid).unwrap();
+            let sender = &mut processes[recipient_index];
 
             sender.exec_state = ExecState::Running;
             sender.message_handler.state = MessageHandlerState::Idle;
 
             unsafe { Cr3::write(sender.cr3, Cr3Flags::empty()) };
-
-            // serial_println!("Payload message received by {}", pid);
-            // serial_println!("{:#0X} {:#0X} {:#0X} {:#0X}", data0, data1, payload, payload_len);
+            
+            serial_println!("[IPC] Swapping {} (PID {}) and {} (PID {})", sender_index, sender_pid, recipient_index, pid);
+            processes.swap(recipient_index, sender_index);
+            serial_println!("[IPC] Swapped");
             
             Ok(MessageState::Received)
         },
@@ -272,17 +276,17 @@ pub unsafe fn send_payload(sender_pid: Pid, message: PayloadMessage, scheduler: 
 /// 
 /// Returns `true` if the process finished sending, or false if it's still waiting or listening
 pub fn refresh_ipc(pid: Pid, scheduler: &mut Scheduler) -> bool {
-    serial_println!("Refreshing {} IPC", pid);
+    // serial_println!("Refreshing {} IPC", pid);
 
     let Some(process) = scheduler.queue.iter().find(|p| p.pid == pid) else { return false };
 
     match &process.message_handler.state {
         MessageHandlerState::Receiving(_) => {
-            serial_println!("{} is receiving, nothing to do here", process.pid);
+            // serial_println!("{} is receiving, nothing to do here", process.pid);
             false
         },
         MessageHandlerState::Sending(message) => {
-            serial_println!("{} is sending, trying again", process.pid);
+            // serial_println!("{} is sending, trying again", process.pid);
             match send_message(process.pid, *message, scheduler) {
                 Some(MessageState::Received) => true,
                 _ => false,

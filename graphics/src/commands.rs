@@ -2,7 +2,7 @@ use std::{ipc::{Message, PayloadMessage}, graphics::{DrawBitmapStatus, DrawStrin
 
 use alloc::{slice, string::String, format};
 
-use crate::{drawing, font::{FONT, self}, tty::Tty};
+use crate::{drawing, font::{self, Font}, tty::Tty};
 
 pub fn draw_bitmap(request: PayloadMessage) -> Message {
     let PayloadMessage { pid, data0, data1, payload, payload_len } = request;
@@ -58,7 +58,7 @@ pub fn draw_bitmap(request: PayloadMessage) -> Message {
     }
 }
 
-pub fn draw_string(request: PayloadMessage) -> Message {
+pub fn draw_string(request: PayloadMessage, font: &Font) -> Message {
     let PayloadMessage { pid, data0, data1: _, payload, payload_len } = request;
 
     let data0_bytes = data0.to_le_bytes();
@@ -95,7 +95,7 @@ pub fn draw_string(request: PayloadMessage) -> Message {
     }
 
     for (i, c) in text.chars().enumerate() {
-        let bitmap = FONT.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
+        let bitmap = font.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
 
         drawing::draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
     }
@@ -108,7 +108,7 @@ pub fn draw_string(request: PayloadMessage) -> Message {
 }
 
 pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
-    serial_println!("[GRAPHICS] trying to print");
+    serial_println!("[GRAPHICS] Trying to print");
 
     let PayloadMessage { pid, data0: _, data1: _, payload, payload_len } = request;
 

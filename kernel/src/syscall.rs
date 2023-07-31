@@ -3,7 +3,7 @@ use alloc::{slice, vec::Vec};
 use x86_64::{registers, VirtAddr, structures::{paging::{PageTableFlags, Mapper, Page}, gdt::SegmentSelector}, PrivilegeLevel, instructions::interrupts::{without_interrupts, self}};
 
 use crate::{serial_println, println, memory, process::{self, ReturnRegs, SCHEDULER, ResponseBuffer}, syscall::dev::sys_request_fb};
-use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE, ReceiveStatus}};
+use abi::{Syscall, ConfigRBufferStatus, ipc::{RESPONSE_BUFFER, RESPONSE_BUFFER_SIZE, ReceiveStatus, SendStatus}};
 
 pub const KERNEL_GS: u64 = 0xFFFF_A000_0000_0000;
 pub const USER_GS: u64 = 0x0000_7FFF_FFFF_F000;
@@ -107,7 +107,7 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 3: {:#018X}", rdx);
     // serial_println!("Syscall arg 4: {:#018X}", r8);
     // serial_println!("Syscall arg 5: {:#018X}", r9);
-    serial_println!("[SYSCALL] Stack: {:#018X}", sp);
+    // serial_println!("[SYSCALL] Stack: {:#018X}", sp);
 
     let Ok(out): Result<Syscall, _> = number.try_into() else {
         asm!(
@@ -118,7 +118,7 @@ pub unsafe fn syscall() {
         );
     };
 
-    serial_println!("{:?}", out);
+    // serial_println!("{:?}", out);
     
     let out = match out{
         Syscall::exit => {
@@ -133,6 +133,13 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::send => {
+            without_interrupts(|| {
+                let scheduler = &mut process::SCHEDULER.write();
+                let sender = scheduler.get_current().unwrap();
+
+                sender.pc = rcx as u64;
+            });
+
             let Some(status) = ipc::sys_send(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
 
             ReturnRegs {
@@ -173,6 +180,13 @@ pub unsafe fn syscall() {
             }
         }
         Syscall::send_payload => {
+            without_interrupts(|| {
+                let scheduler = &mut process::SCHEDULER.write();
+                let sender = scheduler.get_current().unwrap();
+
+                sender.pc = rcx as u64;
+            });
+
             let Some(status) = ipc::sys_send_payload(rdi, rsi, rdx, r8, r9) else { sys_yield(rcx) };
 
             ReturnRegs {
@@ -230,8 +244,6 @@ pub unsafe fn syscall() {
             ..Default::default()
         },
     };
-
-    serial_println!("[SYSCALL] Syscall done");
 
     asm!(
         "call _sysret_asm",

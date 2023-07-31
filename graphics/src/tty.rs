@@ -1,8 +1,9 @@
+use core::hint::black_box;
 use std::dev::FramebufferDescriptor;
 
-use alloc::vec::Vec;
+use alloc::{vec::Vec, boxed::Box};
 
-use crate::drawing::{put_str, shift_up};
+use crate::{drawing::{put_str, shift_up}, font::Font};
 
 const CHAR_WIDTH: usize = 8;
 const CHAR_HEIGHT: usize = 16;
@@ -10,17 +11,18 @@ const CHAR_HEIGHT: usize = 16;
 /// A TTY for user interaction
 /// `x_max` is inclusive maximum for column number
 /// `y_max` is inclusive maximum for row number
-pub struct Tty {
+pub struct Tty<'a> {
     x: usize,
     y: usize,
     x_max: usize,
     y_max: usize,
     color: u16,
     scale: usize,
+    font: &'a Font,
 }
 
-impl Tty {
-    pub fn new(color: u16, scale: usize, fb: &FramebufferDescriptor) -> Self {
+impl<'a> Tty<'a> {
+    pub fn new(color: u16, scale: usize, fb: &FramebufferDescriptor, font: &'a Font) -> Self {
         let x_max = fb.width;
         let y_max = fb.height;
 
@@ -31,6 +33,7 @@ impl Tty {
             y_max: y_max as usize / (CHAR_HEIGHT * scale) - 1,
             color,
             scale,
+            font,
         }
     }
 
@@ -61,7 +64,8 @@ impl Tty {
     fn _write_str_inner(&mut self, text: &str) {
         let space = self.x_max - self.x;
 
-        let put_str = |text| put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color);
+        // let put_str = |text| put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color);
+        let put_str = |text| black_box(put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color, self.font));
     
         // if the text won't all fit on this line
         if text.len() > space {

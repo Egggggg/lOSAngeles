@@ -37,8 +37,7 @@ pub unsafe extern "C" fn _start() {
             panic!("[INPUT] Invalid command: {:#04X}", opcode);
         };
 
-        print!("{:04}", counter);
-        print!(" ");
+        print!("{:03} ", counter);
         counter += 1;
 
         let response = match command {
@@ -46,6 +45,6 @@ pub unsafe extern "C" fn _start() {
             Command::subscribe => commands::subscribe(request, &mut subscribers),
         };
 
-        // notify(response);
+        notify(response);
     }
 }

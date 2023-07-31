@@ -96,7 +96,9 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     use x86_64::registers::control::Cr2;
 
     let addr = Cr2::read();
-    serial_println!("page fault for addr {:#018X}", addr);
+    let cr3 = Cr3::read();
+
+    serial_println!("page fault for addr {:#018X} ({:?}) [{:#018X?}]", addr, error_code, cr3.0);
 
     loop {}
 
