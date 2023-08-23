@@ -4,8 +4,8 @@ use lazy_static::lazy_static;
 const PSF_MAGIC: u32 = 0x864ab572;
 pub const FALLBACK_CHAR: [u8; 16] = [
     0xFF, 0xFF, 0xFF, 0xFF, 
-    0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0x00, 0x00, 0xFF,
+    0xFF, 0x00, 0x00, 0xFF,
     0xFF, 0xFF, 0xFF, 0xFF
 ];
 
@@ -61,12 +61,10 @@ pub struct Font {
 
 impl Font {
     pub fn get_char(&self, character: char) -> Option<&[u8]> {
-        // if character.is_ascii() {
-        //     Some(self.glyphs[character as usize].as_slice())
-        // } else {
-        //     None
-        // }
-
-        None
+        if character.is_ascii() {
+            Some(self.glyphs[character as usize].as_slice())
+        } else {
+            None
+        }
     }
 }

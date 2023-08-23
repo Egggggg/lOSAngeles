@@ -65,12 +65,21 @@ pub unsafe extern "C" fn _start() {
             )
         }
 
-        serial_println!("[GRAPHICS] gooba");
-
         serial_println!("[GRAPHICS] RSP: {:#018X}", rsp);
 
         serial_println!("[GRAPHICS] Request from {}", request.pid);
         serial_println!("[GRAPHICS] Command: {:?}", command);
+
+        let rsp: u64;
+
+        unsafe {
+            asm!(
+                "mov {}, rsp",
+                out(reg) rsp,
+            )
+        }
+
+        serial_println!("[GRAPHICS] RSP: {:#018X}", rsp);
 
         let response = match command  {
             Command::draw_bitmap => commands::draw_bitmap(request.into()),

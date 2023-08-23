@@ -11,7 +11,7 @@ use crate::{memory, syscall, serial_println, ipc::{MessageHandler, self}};
 mod elf;
 
 const STACK_BOTTOM: u64 = 0x6800_0000_0000;
-const STACK_SIZE: u64 = 4096 * 5;
+const STACK_SIZE: u64 = 4096 * 16;
 
 lazy_static! {
     pub static ref SCHEDULER: RwLock<Scheduler> = {

@@ -107,7 +107,7 @@ pub unsafe fn syscall() {
     // serial_println!("Syscall arg 3: {:#018X}", rdx);
     // serial_println!("Syscall arg 4: {:#018X}", r8);
     // serial_println!("Syscall arg 5: {:#018X}", r9);
-    // serial_println!("[SYSCALL] Stack: {:#018X}", sp);
+    serial_println!("[SYSCALL] Stack: {:#018X}", sp);
 
     let Ok(out): Result<Syscall, _> = number.try_into() else {
         asm!(
@@ -244,6 +244,19 @@ pub unsafe fn syscall() {
             ..Default::default()
         },
     };
+
+    let rsp: u64;
+
+    unsafe {
+        asm!(
+            "swapgs",
+            "mov {}, gs:0",
+            "swapgs",
+            out(reg) rsp,
+        )
+    }
+
+    serial_println!("[SYSCALL] Returning RSP: {:#018X}", rsp);
 
     asm!(
         "call _sysret_asm",

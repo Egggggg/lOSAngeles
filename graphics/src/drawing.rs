@@ -98,16 +98,9 @@ pub unsafe fn shift_up(amount: usize) {
 pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16, font: &Font) {
     serial_println!("[GRAPHICS/DRAWING] Text length: {}", text.len());
 
-    for i in 0..text.len() {
-        let e = i;
-    }
-
-    for c in text.chars() {
+    for (i, c) in text.chars().enumerate() {
         let bitmap = font.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
 
-        serial_print("[GRAPHICS/DRAWING] gooba 69".to_owned());
-
-        // serial_print!("[GRAPHICS/DRAWING] {}", c);
-        // draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
+        draw_bitmap(bitmap, x as usize + i * 8 * scale as usize, y as usize, color, 1, 16, scale as usize);
     }
 }

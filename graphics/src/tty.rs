@@ -64,8 +64,8 @@ impl<'a> Tty<'a> {
     fn _write_str_inner(&mut self, text: &str) {
         let space = self.x_max - self.x;
 
-        // let put_str = |text| put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color);
-        let put_str = |text| black_box(put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color, self.font));
+        let put_str = |text| put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color, self.font);
+        // let put_str = |text| black_box(put_str(self.x * CHAR_WIDTH * self.scale, self.y * CHAR_HEIGHT * self.scale, self.scale, text, self.color, self.font));
     
         // if the text won't all fit on this line
         if text.len() > space {
