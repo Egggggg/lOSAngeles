@@ -100,24 +100,36 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
 
     serial_println!("page fault for addr {:#018X} ({:?}) [{:#018X?}]", addr, error_code, cr3.0);
 
-    loop {}
-
     // serial_println!("pml4 @ {:#018X}", cr3.start_address());
 
-    if error_code.contains(PageFaultErrorCode::USER_MODE) && !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
-    // if !error_code.contains(PageFaultErrorCode::INSTRUCTION_FETCH) {
-        // serial_println!("Allocating page...");
-        // serial_println!("Error: {:?}", error_code);
 
-        let page = Page::containing_address(addr);
-        let flags = PageTableFlags::PRESENT | PageTableFlags::USER_ACCESSIBLE | PageTableFlags::WRITABLE;
+    let rax: u64;
+    let rcx: u64;
+    let rdi: u64;
+    let rsi: u64;
+    let rdx: u64;
+    let r8: u64;
+    let r9: u64;
+    let sp: u64;
+    let rsp: u64;
 
-        unsafe { memory::map_page(page, flags).unwrap() };
+    unsafe { asm!(
+        "mov {rsp}, rsp",
+        "swapgs", // swap to user gs so we can get the user stack
+        "mov {sp}, gs:0", // get the user stack
+        "swapgs", // swap back to kernel gs
+        out("rax") rax,
+        out("rcx") rcx,
+        out("rdi") rdi,
+        out("rsi") rsi,
+        out("rdx") rdx,
+        out("r8") r8,
+        out("r9") r9,
+        sp = out(reg) sp,
+        rsp = out(reg) rsp,
+    ); }
 
-        serial_println!("[KERNEL] Page allocated");
-        return;
-    }
-
+    serial_println!("rax: {:#018X}\nrcx: {:#018X}\nrdi: {:#018X}\nrsi: {:#018X}\nrdx: {:#018X}\nr8: {:#018X}\nr9: {:#018X}\nuser rsp: {:#018X}\nrsp: {:#018X}", rax, rcx, rdi, rsi, rdx, r8, r9, sp, rsp);
     panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}\nAddress: {addr:?}");
 }
 

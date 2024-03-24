@@ -118,9 +118,9 @@ pub unsafe fn syscall() {
         );
     };
 
-    // serial_println!("{:?}", out);
-    
-    let out = match out{
+    serial_println!("[SYSCALL] {:?}", out);
+
+    let out = match out {
         Syscall::exit => {
             sys_exit();
         }
