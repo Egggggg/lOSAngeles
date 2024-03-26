@@ -108,15 +108,15 @@ pub fn draw_string(request: PayloadMessage, font: &Font) -> Message {
 }
 
 pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
-    serial_println!("[GRAPHICS] Trying to print");
+    // serial_println!("[GRAPHICS] Trying to print");
 
     let PayloadMessage { pid, data0: _, data1: _, payload, payload_len } = request;
 
     let payload_ptr = payload as *const u8;
 
-    serial_println!("[GRAPHICS] Assembling string");
+    // serial_println!("[GRAPHICS] Assembling string");
     let payload_bytes = unsafe { slice::from_raw_parts(payload_ptr, payload_len as usize) };
-    serial_println!("[GRAPHICS] Bytes assembled");
+    // serial_println!("[GRAPHICS] Bytes assembled");
 
     let Ok(text) = String::from_utf8(payload_bytes.into()) else {
         return Message {
@@ -127,7 +127,7 @@ pub fn print(request: PayloadMessage, tty: &mut Tty) -> Message {
     };
 
     tty.write_str(&text);
-    serial_println!("[GRAPHICS] {}", text);
+    // serial_println!("[GRAPHICS] {}", text);
 
     Message { 
         pid,

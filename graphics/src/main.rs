@@ -10,8 +10,7 @@ pub mod drawing;
 pub mod font;
 pub mod tty;
 
-use core::{arch::asm, default};
-use std::{ipc::{receive, notify, Message}, serial_println, config_rbuffer};
+use std::{config_rbuffer, ipc::{notify, receive}, serial_println};
 
 use std::graphics::Command;
 
@@ -35,51 +34,12 @@ pub unsafe extern "C" fn _start() {
 
     let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB, &psf);
 
-    let mut counter = 0;
-
     loop {
         let request = receive(&[]);
-        // serial_println!("[GRAPHICS] gooba");
         let opcode = (request.data0 >> 56) & 0xFF;
         let Ok(command): Result<Command, _> = opcode.try_into() else {
             panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
-
-            // notify(Message {
-            //     pid: request.pid,
-            //     data0: 0xFF,
-            //     ..Default::default()
-            // });
-
-            // continue;
         };
-
-        // serial_println!("[GRAPHICS] gooba 2");
-        // serial_println!("[GRAPHICS] gooba 3");
-
-        let rsp: u64;
-
-        unsafe {
-            asm!(
-                "mov {}, rsp",
-                out(reg) rsp,
-            )
-        }
-
-        serial_println!("[GRAPHICS] RSP: {:#018X}", rsp);
-
-        serial_println!("[GRAPHICS] Request from {}", request.pid);
-        serial_println!("[GRAPHICS] Command: {:?}", command);
-
-        let rsp: u64;
-
-        unsafe {
-            asm!(
-                "mov {}, rsp",
-                out(reg) rsp,
-            )
-        }
-
-        serial_println!("[GRAPHICS] RSP: {:#018X}", rsp);
 
         let response = match command  {
             Command::draw_bitmap => commands::draw_bitmap(request.into()),
@@ -88,8 +48,5 @@ pub unsafe extern "C" fn _start() {
         };
 
         notify(response);
-
-        serial_println!("[GRAPHICS] Counter: {}", counter);
-        counter += 1;
     }
 }

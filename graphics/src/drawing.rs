@@ -96,7 +96,7 @@ pub unsafe fn shift_up(amount: usize) {
 }
 
 pub fn put_str(x: usize, y: usize, scale: usize, text: &str, color: u16, font: &Font) {
-    serial_println!("[GRAPHICS/DRAWING] Text length: {}", text.len());
+    // serial_println!("[GRAPHICS/DRAWING] Text length: {}", text.len());
 
     for (i, c) in text.chars().enumerate() {
         let bitmap = font.get_char(c).unwrap_or(&font::FALLBACK_CHAR);
