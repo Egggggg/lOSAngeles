@@ -11,9 +11,9 @@ pub mod font;
 pub mod tty;
 
 use std::{config_rbuffer, ipc::{notify, receive}, serial_println};
-
 use std::graphics::Command;
 
+use alloc::format;
 use drawing::FB;
 
 use crate::font::unpack_psf;
@@ -32,21 +32,28 @@ pub unsafe extern "C" fn _start() {
         unpack_psf(psf)
     };
 
-    let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB, &psf);
+    let mut counter = 0;
 
     loop {
-        let request = receive(&[]);
-        let opcode = (request.data0 >> 56) & 0xFF;
-        let Ok(command): Result<Command, _> = opcode.try_into() else {
-            panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
-        };
-
-        let response = match command  {
-            Command::draw_bitmap => commands::draw_bitmap(request.into()),
-            Command::draw_string => commands::draw_string(request.into(), &psf),
-            Command::print => commands::print(request.into(), &mut tty),
-        };
-
-        notify(response);
+        format!("{}", counter);
+        counter += 1;
     }
+
+    // let mut tty = tty::Tty::new(TTY_COLOR, TTY_SCALE, &FB, &psf);
+
+    // loop {
+    //     let request = receive(&[]);
+    //     let opcode = (request.data0 >> 56) & 0xFF;
+    //     let Ok(command): Result<Command, _> = opcode.try_into() else {
+    //         panic!("[GRAPHICS] Invalid command: {:#04X}", opcode);
+    //     };
+
+    //     let response = match command  {
+    //         Command::draw_bitmap => commands::draw_bitmap(request.into()),
+    //         Command::draw_string => commands::draw_string(request.into(), &psf),
+    //         Command::print => commands::print(request.into(), &mut tty),
+    //     };
+
+    //     notify(response);
+    // }
 }

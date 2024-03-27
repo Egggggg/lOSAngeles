@@ -86,7 +86,9 @@ impl Scheduler {
 
         let (pid, entry) = match program {
             Program::Current1 => {
-                let contents = include_bytes!("../../target/programs/current1.elf");
+                // REMEMBER: Change this back
+                // let contents = include_bytes!("../../target/programs/current1.elf");
+                let contents = include_bytes!("../../target/servers/graphics.elf");
                 let pid = self.next_pid;
                 self.next_pid += 1;
 

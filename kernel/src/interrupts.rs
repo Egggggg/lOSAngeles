@@ -114,10 +114,7 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     let rsp: u64;
 
     unsafe { asm!(
-        "mov {rsp}, rsp",
-        "swapgs", // swap to user gs so we can get the user stack
-        "mov {sp}, gs:0", // get the user stack
-        "swapgs", // swap back to kernel gs
+        "nop",
         out("rax") rax,
         out("rcx") rcx,
         out("rdi") rdi,
@@ -125,11 +122,9 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
         out("rdx") rdx,
         out("r8") r8,
         out("r9") r9,
-        sp = out(reg) sp,
-        rsp = out(reg) rsp,
     ); }
 
-    serial_println!("rax: {:#018X}\nrcx: {:#018X}\nrdi: {:#018X}\nrsi: {:#018X}\nrdx: {:#018X}\nr8: {:#018X}\nr9: {:#018X}\nuser rsp: {:#018X}\nrsp: {:#018X}", rax, rcx, rdi, rsi, rdx, r8, r9, sp, rsp);
+    serial_println!("rax: {:#018X}\nrcx: {:#018X}\nrdi: {:#018X}\nrsi: {:#018X}\nrdx: {:#018X}\nr8: {:#018X}\nr9: {:#018X}\npid: {}", rax, rcx, rdi, rsi, rdx, r8, r9, SCHEDULER.read().queue[0].pid);
     panic!("PAGE FAULT: {stack_frame:?}\nError code: {error_code:?}\nAddress: {addr:?}");
 }
 
