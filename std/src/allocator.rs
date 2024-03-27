@@ -3,7 +3,7 @@ use core::{alloc::GlobalAlloc, ptr};
 use alloc::{borrow::ToOwned, string::String};
 use spin::Mutex;
 
-use crate::{align_up, serial_println};
+use crate::{align_up, getpid, graphics::draw_bitmap, serial_println};
 
 extern "C" {
     fn _initial_process_heap_start();
@@ -30,6 +30,17 @@ unsafe impl GlobalAlloc for Allocator {
         };
 
         if alloc_end > bump.heap_end as usize {
+            draw_bitmap(&[
+                0b11001100,
+                0b00110011,
+                0b11001100,
+                0b00110011,
+                0b11001100,
+                0b00110011,
+                0b11001100,
+                0b00110011,
+            ], 64 + bump.failures, 64 + bump.failures, 0xffff, 1, 8, 1);
+            bump.failures += 1;
             ptr::null_mut() // out of memory
         } else {
             bump.next = alloc_end as _;
@@ -42,7 +53,6 @@ unsafe impl GlobalAlloc for Allocator {
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
         let mut bump = self.0.lock();
-
         bump.allocations -= 1;
 
         if bump.allocations == 0 {
@@ -57,6 +67,7 @@ pub struct Heap {
     pub next: *mut u8,
     pub allocations: usize,
     pub total: usize,
+    failures: u16,
 }
 
 unsafe impl Send for Heap {}
@@ -75,6 +86,7 @@ impl Heap {
             next: heap_start,
             allocations: 0,
             total: 0,
+            failures: 0,
         }
     }
 }
