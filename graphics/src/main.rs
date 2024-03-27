@@ -2,6 +2,7 @@
 
 #![no_std]
 #![no_main]
+#![feature(fmt_internals)]
 
 extern crate alloc;
 
@@ -10,16 +11,25 @@ pub mod drawing;
 pub mod font;
 pub mod tty;
 
+use core::fmt::{Arguments, Write};
 use std::{config_rbuffer, ipc::{notify, receive}, serial_println};
 use std::graphics::Command;
 
-use alloc::format;
+use alloc::{fmt, string, borrow::ToOwned};
 use drawing::FB;
 
 use crate::font::unpack_psf;
 
 const TTY_COLOR: u16 = 0xDDDD;
 const TTY_SCALE: usize = 1;
+
+fn format_inner(args: Arguments<'_>) -> string::String {
+    // let capacity = args.estimated_capacity();
+    // let mut output = string::String::with_capacity(capacity);
+    // output.write_fmt(args).expect("a formatting trait implementation returned an error");
+    // output
+    "bleebo".to_owned()
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn _start() {
@@ -35,7 +45,7 @@ pub unsafe extern "C" fn _start() {
     let mut counter = 0;
 
     loop {
-        format!("{}", counter);
+        format_inner(format_args!("{}", counter));
         counter += 1;
     }
 
