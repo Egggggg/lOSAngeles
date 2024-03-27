@@ -44,7 +44,7 @@ SECTIONS
     .bss : {
         . = ALIGN(4K);
         PROVIDE(_initial_process_heap_start = .);
-        PROVIDE(_initial_process_heap_size = 4096 * 8);
+        PROVIDE(_initial_process_heap_size = 4096 * 16);
         . += _initial_process_heap_size;
         PROVIDE(_initial_process_heap_end = .);
 

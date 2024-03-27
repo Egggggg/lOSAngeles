@@ -110,8 +110,6 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, e
     let rdx: u64;
     let r8: u64;
     let r9: u64;
-    let sp: u64;
-    let rsp: u64;
 
     unsafe { asm!(
         "nop",

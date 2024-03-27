@@ -1,8 +1,9 @@
 use core::{alloc::GlobalAlloc, ptr};
 
+use alloc::{borrow::ToOwned, string::String};
 use spin::Mutex;
 
-use crate::align_up;
+use crate::{align_up, serial_println};
 
 extern "C" {
     fn _initial_process_heap_start();
@@ -13,10 +14,10 @@ extern "C" {
 const HEAP_START: *mut u8 = _initial_process_heap_start as _;
 const HEAP_END: *const u8 = _initial_process_heap_end as _;
 
-struct Allocator(Mutex<Heap>);
+pub struct Allocator(pub Mutex<Heap>);
 
 #[global_allocator]
-static ALLOCATOR: Allocator = Allocator(Mutex::new(unsafe { Heap::new(HEAP_START, HEAP_END) } ));
+pub static ALLOCATOR: Allocator = Allocator(Mutex::new(unsafe { Heap::new(HEAP_START, HEAP_END) } ));
 
 unsafe impl GlobalAlloc for Allocator {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut u8 {
@@ -33,7 +34,8 @@ unsafe impl GlobalAlloc for Allocator {
         } else {
             bump.next = alloc_end as _;
             bump.allocations += 1;
-            
+            bump.total += 1;
+
             alloc_start as *mut u8
         }
     }
@@ -53,7 +55,8 @@ pub struct Heap {
     pub heap_start: *mut u8,
     pub heap_end: *const u8,
     pub next: *mut u8,
-    pub allocations: usize,   
+    pub allocations: usize,
+    pub total: usize,
 }
 
 unsafe impl Send for Heap {}
@@ -71,6 +74,7 @@ impl Heap {
             heap_end,
             next: heap_start,
             allocations: 0,
+            total: 0,
         }
     }
 }

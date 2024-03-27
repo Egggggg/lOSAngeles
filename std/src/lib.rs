@@ -15,6 +15,9 @@ use alloc::{slice, vec::Vec};
 pub use syscalls::*;
 pub use servers::*;
 
+// TODO: delet this
+pub use allocator::ALLOCATOR;
+
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     serial_print!("Panic: {}", info);

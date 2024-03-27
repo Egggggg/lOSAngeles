@@ -1,4 +1,7 @@
+use std::serial_println;
+
 use alloc::vec::Vec;
+use alloc::vec;
 use lazy_static::lazy_static;
 
 const PSF_MAGIC: u32 = 0x864ab572;
